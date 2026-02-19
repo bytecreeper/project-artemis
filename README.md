@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/logo_main.png" alt="Project Artemis" width="300">
+</p>
+
 # Project Artemis
 
 Hello everyone,
@@ -31,6 +35,11 @@ Core capabilities:
 - **Remediation engine** — verified actions (kill process, quarantine file, block IP) with rollback support
 
 The interface has two modes:
+
+<p align="center">
+  <img src="docs/images/logo_shield.png" alt="Artemis Shield" width="220">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/images/logo_archer.png" alt="Artemis Archer" width="220">
+</p>
 
 - **Shield** — designed for non-technical users. Clean, simple, confidence-building. Shows your security score, protection status, and recent activity in plain language.
 - **Archer** — designed for security professionals. Graphs, charts, live event feeds, hunt tools, correlation timelines, and full investigation capabilities.
