@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Artemis Shield Security Report — TheCreep — 2026-02-19 21:56:27 UTC</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: #0a0a1a;
+        color: #e0e0e0;
+        line-height: 1.6;
+    }
+    .report {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 40px 32px;
+    }
+    .report-header {
+        text-align: center;
+        margin-bottom: 40px;
+        padding-bottom: 24px;
+        border-bottom: 2px solid #ffbf00;
+    }
+    .report-header h1 {
+        color: #ffbf00;
+        font-family: monospace;
+        font-size: 28px;
+        letter-spacing: 4px;
+    }
+    .report-header .meta {
+        color: #888;
+        font-size: 13px;
+        margin-top: 8px;
+    }
+    .score-card {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 32px;
+        margin: 32px 0;
+        padding: 32px;
+        background: #111128;
+        border-radius: 12px;
+        border: 1px solid #222;
+    }
+    .score-circle {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 4px solid #00ff41;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .score-number {
+        font-size: 36px;
+        font-weight: 800;
+        color: #00ff41;
+        font-family: monospace;
+    }
+    .score-label {
+        font-size: 11px;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .score-details { font-size: 14px; }
+    .score-details .metric {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        border-bottom: 1px solid #1a1a2e;
+        min-width: 280px;
+    }
+    .score-details .metric span:first-child { color: #888; }
+    .score-details .metric span:last-child { font-family: monospace; font-weight: 600; }
+
+    .section {
+        margin: 32px 0;
+    }
+    .section h2 {
+        color: #ffbf00;
+        font-family: monospace;
+        font-size: 16px;
+        padding: 8px 0;
+        border-bottom: 1px solid #333;
+        margin-bottom: 16px;
+        letter-spacing: 2px;
+    }
+    .executive-summary {
+        background: #111128;
+        border-left: 3px solid #ffbf00;
+        padding: 16px 20px;
+        border-radius: 0 8px 8px 0;
+        font-size: 15px;
+        line-height: 1.7;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    th {
+        text-align: left;
+        padding: 10px 12px;
+        background: #111128;
+        color: #ffbf00;
+        font-family: monospace;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-bottom: 2px solid #333;
+    }
+    td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #1a1a2e;
+        vertical-align: top;
+    }
+    tr:hover { background: rgba(255,191,0,0.03); }
+    code {
+        background: #1a1a2e;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 12px;
+    }
+    .footer {
+        text-align: center;
+        margin-top: 48px;
+        padding-top: 24px;
+        border-top: 1px solid #333;
+        color: #666;
+        font-size: 12px;
+    }
+    @media print {
+        body { background: #fff; color: #000; }
+        .report-header h1 { color: #b8860b; }
+        .section h2 { color: #b8860b; }
+        th { background: #f0f0f0; color: #333; }
+        td { border-bottom-color: #ddd; }
+        .score-card { background: #f8f8f8; border-color: #ddd; }
+    }
+</style>
+</head>
+<body>
+<div class="report">
+
+    <div class="report-header">
+        <div style="margin-bottom:12px;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#888;">
+            🛡️ ARTEMIS SHIELD — Protection Report
+        </div>
+        <h1>[ SECURITY STATUS REPORT ]</h1>
+        <div class="meta">
+            Host: TheCreep &nbsp;|&nbsp;
+            Generated: 2026-02-19 21:56:27 UTC &nbsp;|&nbsp;
+            Artemis v3.0.0
+        </div>
+    </div>
+
+    <!-- Security Score -->
+    <div class="score-card">
+        <div class="score-circle">
+            <div class="score-number">100</div>
+            <div class="score-label">SECURE</div>
+        </div>
+        <div class="score-details">
+            <div class="metric"><span>Events (24h)</span><span>1248</span></div>
+            <div class="metric"><span>Open Alerts</span><span>0</span></div>
+            <div class="metric"><span>Active Findings</span><span>0</span></div>
+            <div class="metric"><span>Network Devices</span><span>14</span></div>
+            <div class="metric"><span>EDR Plugins</span><span>3</span></div>
+            <div class="metric"><span>Monitoring Uptime</span><span>0.0h</span></div>
+        </div>
+    </div>
+
+    <!-- Executive Summary -->
+    <div class="section">
+        <h2>[ EXECUTIVE SUMMARY ]</h2>
+        <div class="executive-summary">System security is in good standing with a score of 100/100. No active security findings were detected. 1248 events were processed in the last 24 hours with 14 devices on the network. No immediate action is required.</div>
+    </div>
+
+    <!-- Findings -->
+    <div class="section">
+        <h2>[ WHAT WE FOUND ]</h2>
+        <p style="color:#aaa;font-size:14px;margin-bottom:16px;">Here are the security issues Artemis detected on your system, ordered by importance.</p>
+        <table>
+            <thead><tr>
+                <th>Severity</th><th>Finding</th>
+                <th>Details</th>
+            </tr></thead>
+            <tbody><tr><td colspan="3" style="text-align:center;color:#666;padding:24px;">No active security findings. ✓</td></tr></tbody>
+        </table>
+    </div>
+
+    <!-- Alerts -->
+    <div class="section">
+        <h2>[ ALERTS ]</h2>
+        <table>
+            <thead><tr><th>Severity</th><th>Alert</th><th>Description</th><th>Time</th></tr></thead>
+            <tbody><tr><td colspan="4" style="text-align:center;color:#666;padding:24px;">No open alerts. ✓</td></tr></tbody>
+        </table>
+    </div>
+
+    <!-- Event Timeline -->
+    <div class="section">
+        <h2>[ 24-HOUR EVENT TIMELINE ]</h2>
+        <div style="background:#111128;border-radius:8px;padding:16px;">
+            
+            <div style="display:flex;align-items:center;gap:8px;margin:2px 0;">
+                <span style="width:50px;font-size:11px;color:#888;text-align:right;font-family:monospace;">12:00</span>
+                <div style="flex:1;background:#1a1a2e;border-radius:2px;height:14px;">
+                    <div style="width:32.20675944333996%;background:#00ff41;height:100%;border-radius:2px;min-width:1px;"></div>
+                </div>
+                <span style="width:30px;font-size:11px;color:#888;font-family:monospace;">162</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin:2px 0;">
+                <span style="width:50px;font-size:11px;color:#888;text-align:right;font-family:monospace;">13:00</span>
+                <div style="flex:1;background:#1a1a2e;border-radius:2px;height:14px;">
+                    <div style="width:56.66003976143141%;background:#00ff41;height:100%;border-radius:2px;min-width:1px;"></div>
+                </div>
+                <span style="width:30px;font-size:11px;color:#888;font-family:monospace;">285</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin:2px 0;">
+                <span style="width:50px;font-size:11px;color:#888;text-align:right;font-family:monospace;">14:00</span>
+                <div style="flex:1;background:#1a1a2e;border-radius:2px;height:14px;">
+                    <div style="width:59.24453280318092%;background:#00ff41;height:100%;border-radius:2px;min-width:1px;"></div>
+                </div>
+                <span style="width:30px;font-size:11px;color:#888;font-family:monospace;">298</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin:2px 0;">
+                <span style="width:50px;font-size:11px;color:#888;text-align:right;font-family:monospace;">15:00</span>
+                <div style="flex:1;background:#1a1a2e;border-radius:2px;height:14px;">
+                    <div style="width:100.0%;background:#00ff41;height:100%;border-radius:2px;min-width:1px;"></div>
+                </div>
+                <span style="width:30px;font-size:11px;color:#888;font-family:monospace;">503</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Network Inventory -->
+    <div class="section">
+        <h2>[ NETWORK INVENTORY ]</h2>
+        <table>
+            <thead><tr><th>IP Address</th><th>Hostname</th><th>MAC</th><th>OS</th><th>Last Seen</th></tr></thead>
+            <tbody>
+            <tr>
+                <td><code>192.168.4.1</code></td>
+                <td>—</td>
+                <td><code style="font-size:11px;">d8:8e:d4:6a:ea:b2</code></td>
+                <td>—</td>
+                <td style="font-size:11px;">2026-02-19 15:56:12</td>
+            </tr>
+            <tr>
+                <td><code>192.168.7.255</code></td>
+                <td>—</td>
+                <td><code style="font-size:11px;">24:e5:0f:bb:ac:45</code></td>
+                <td>—</td>
+                <td style="font-size:11px;">2026-02-19 15:50:39</td>
+            </tr>
+            <tr>
+                <td><code>192.168.4.121</code></td>
+                <td>—</td>
+                <td><code style="font-size:11px;">68:3a:48:5a:ef:78</code></td>
+                <td>—</td>
+                <td style="font-size:11px;">2026-02-19 15:48:04</td>
+            </tr>
+            <tr>
+                <td><code>192.168.4.91</code></td>
+                <td>—</td>
+                <td><code style="font-size:11px;">b2:55:49:6c:c7:fd</code></td>
+                <td>—</td>
+                <td style="font-size:11px;">2026-02-19 15:45:39</td>
+            </tr>
+            <tr>
+                <td><code>192.168.4.142</code></td>
+                <td>—</td>
+                <td><code style="font-size:11px;">1c:53:f9:b2:46:02</code></td>
+                <td>—</td>
+                <td style="font-size:11px;">2026-02-19 15:43:50</td>
+            </tr>
+            <tr>
+                <td><code>192.168.4.107</code></td>
+                <td>—</td>
+                <td><code style="font-size:11px;">24:e5:0f:bb:ac:45</code></td>
+                <td>—</td>
+                <td style="font-size:11px;">2026-02-19 15:37:47</td>
+            </tr>
+            <tr>
+                <td><code>192.168.4.122</code></td>
+                <td>—</td>
+                <td><code style="font-size:11px;">44:27:45:a6:23:40</code></td>
+                <td>—</td>
+                <td style="font-size:11px;">2026-02-19 15:25:45</td>
+            </tr>
+            <tr>
+                <td><code>192.168.4.90</code></td>
+                <td>—</td>
+                <td><code style="font-size:11px;">c8:d0:83:e8:77:2f</code></td>
+                <td>—</td>
+                <td style="font-size:11px;">2026-02-19 15:04:56</td>
+            </tr>
+            <tr>
+                <td><code>192.168.4.110</code></td>
+                <td>—</td>
+                <td><code style="font-size:11px;">6e:6a:07:a0:8d:98</code></td>
+                <td>—</td>
+                <td style="font-size:11px;">2026-02-19 15:00:11</td>
+            </tr>
+            <tr>
+                <td><code>192.168.4.100</code></td>
+                <td>—</td>
+                <td><code style="font-size:11px;">d8:8e:d4:6c:61:b2</code></td>
+                <td>—</td>
+                <td style="font-size:11px;">2026-02-19 14:59:58</td>
+            </tr>
+            <tr>
+                <td><code>192.168.4.79</code></td>
+                <td>—</td>
+                <td><code style="font-size:11px;">c0:95:6d:6c:cd:ba</code></td>
+                <td>—</td>
+                <td style="font-size:11px;">2026-02-19 14:43:05</td>
+            </tr>
+            <tr>
+                <td><code>192.168.4.163</code></td>
+                <td>—</td>
+                <td><code style="font-size:11px;">bc:fc:e7:39:bb:65</code></td>
+                <td>—</td>
+                <td style="font-size:11px;">2026-02-19 13:36:13</td>
+            </tr>
+            <tr>
+                <td><code>192.168.4.92</code></td>
+                <td>—</td>
+                <td><code style="font-size:11px;">da:86:d7:4c:76:19</code></td>
+                <td>—</td>
+                <td style="font-size:11px;">2026-02-19 13:34:40</td>
+            </tr>
+            <tr>
+                <td><code>192.168.4.120</code></td>
+                <td>—</td>
+                <td><code style="font-size:11px;">d8:8e:d4:6b:70:92</code></td>
+                <td>—</td>
+                <td style="font-size:11px;">2026-02-19 13:11:02</td>
+            </tr></tbody>
+        </table>
+    </div>
+
+    <!-- Remediation History -->
+    <div class="section">
+        <h2>[ REMEDIATION ACTIONS ]</h2>
+        <table>
+            <thead><tr><th>Time</th><th>Action</th><th>Target</th><th>Status</th></tr></thead>
+            <tbody><tr><td colspan="4" style="text-align:center;color:#666;padding:24px;">No remediation actions taken.</td></tr></tbody>
+        </table>
+    </div>
+
+    <div class="footer">
+        <p>Generated by Artemis Shield v3.0.0 — Protection Report</p>
+        <p>This report is confidential. Distribute only to authorized personnel.</p>
+    </div>
+
+</div>
+</body>
+</html>

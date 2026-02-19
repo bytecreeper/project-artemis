@@ -2,7 +2,7 @@
 {% block title %}Reports — Artemis{% endblock %}
 
 {% block content %}
-<div x-data="reportsApp()" style="padding: 24px;">
+<div x-data="reportsApp()" style="padding: 24px;" data-report-mode="{{ 'archer' if view_mode == 'ops' else 'shield' }}">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
         <div>
             <h2 style="font-family: var(--font-mono); color: var(--amber); font-size: 18px; margin: 0;">[R] SECURITY REPORTS</h2>
@@ -114,14 +114,16 @@ function reportsApp() {
         messageType: 'success',
 
         viewReport() {
-            window.open('/api/report', '_blank');
+            const mode = document.querySelector('[data-report-mode]')?.dataset.reportMode || 'shield';
+            window.open('/api/report?mode=' + mode, '_blank');
         },
 
         async saveReport() {
             this.generating = true;
             this.message = '';
             try {
-                const resp = await fetch('/api/report/save', { method: 'POST' });
+                const mode = document.querySelector('[data-report-mode]')?.dataset.reportMode || 'shield';
+                const resp = await fetch('/api/report/save?mode=' + mode, { method: 'POST' });
                 const data = await resp.json();
                 this.message = `Report saved to ${data.path}`;
                 this.messageType = 'success';

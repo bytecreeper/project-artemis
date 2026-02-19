@@ -572,7 +572,7 @@ async def chat(req: ChatRequest) -> dict[str, Any]:
 # ── Reports ───────────────────────────────────────────────────────────
 
 @router.get("/report")
-async def generate_report_endpoint() -> Any:
+async def generate_report_endpoint(mode: str = "shield") -> Any:
     """Generate and return an HTML security report."""
     from fastapi.responses import HTMLResponse
     from artemis.reporting.generator import generate_report
@@ -586,12 +586,13 @@ async def generate_report_endpoint() -> Any:
         network_scanner=s.network,
         edr_plugins=s.edr_plugins,
         start_time=s.start_time,
+        report_mode=mode,
     )
     return HTMLResponse(content=html)
 
 
 @router.post("/report/save")
-async def save_report() -> dict[str, str]:
+async def save_report(mode: str = "shield") -> dict[str, str]:
     """Generate and save report to disk."""
     from artemis.reporting.generator import generate_report
     from artemis.core.threat_classifier import classifier
@@ -599,7 +600,8 @@ async def save_report() -> dict[str, str]:
     s = _get_state()
     from datetime import datetime
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = f"reports/artemis_report_{timestamp}.html"
+    label = "shield" if mode != "archer" else "archer"
+    output_path = f"reports/artemis_{label}_report_{timestamp}.html"
 
     await generate_report(
         db=s.db,
@@ -609,6 +611,7 @@ async def save_report() -> dict[str, str]:
         edr_plugins=s.edr_plugins,
         start_time=s.start_time,
         output_path=output_path,
+        report_mode=mode,
     )
     return {"status": "saved", "path": output_path}
 
