@@ -230,18 +230,73 @@ python tests/test_p2.py
 
 Test files P0, P1, and P2 are standalone runners. P3 and P4 use pytest directly.
 
-## Status
+## Current Status
 
-This project is under active development. Current state:
+Under active development. 117 tests passing across all modules. Core EDR monitoring, vulnerability scanning (10 scanners), adversary simulation (12 MITRE techniques), threat correlation, AI chat interface, and Shield/Archer dual-mode UI are all functional. AI features work with Ollama or degrade gracefully without it.
 
-- 117 tests passing across all modules
-- 10 vulnerability scanners operational
-- 12 adversary simulation techniques implemented
-- Real-time monitoring, correlation, and alerting functional
-- Shield and Archer UI modes complete
-- AI features work with Ollama or degrade gracefully without it
+## Roadmap
 
-Contributions, feedback, and testing are welcome.
+Development is organized into six phases. Each phase builds on the previous one.
+
+### Phase 1 — Foundation Hardening
+
+The current build works but has gaps that need to be closed before anything else.
+
+- **Authentication** — Bearer token auth for all API endpoints. Token generated on first run. Without this, anyone on the local network has full access to remediation actions.
+- **Persistent findings** — Security findings, investigations, scan results, and alerts are currently stored in memory. They disappear on restart. All of these need to be persisted to DuckDB so the system maintains continuity across restarts.
+- **Security score history** — Track the security score over time so users can see whether their posture is improving or degrading.
+
+### Phase 2 — Detection Overhaul
+
+The detection layer needs to be more precise and more extensible.
+
+- **Externalized detection rules** — Move threat signatures and patterns from hardcoded Python into YAML rule files. Load at startup with hot-reload support. This allows updating detection capabilities without code changes and opens the door for community contributions.
+- **Real-time file integrity monitoring** — Replace the current 30-second polling approach with real-time filesystem event watching. Monitor a curated list of critical files (hosts file, startup folders, scheduled tasks, system DLLs) instead of entire directory trees.
+- **Learning mode for file integrity** — First week of operation builds a baseline silently. After that, alert on deviations from the established baseline rather than from a static snapshot.
+- **Expanded Sysmon parsing** — Parse all 26+ Sysmon event types with proper field extraction, not just generic event ingestion.
+
+### Phase 3 — Correlation Engine v2
+
+The current correlation engine has three hardcoded rules. It needs to become a real analysis layer.
+
+- **Session-based correlation** — Group events by Windows logon session, not just process ID. Processes, files, and network connections made in the same session are likely related.
+- **Entity relationship graph** — Build a graph of relationships: process spawned child, process wrote file, process connected to IP, file was loaded by process. Look for suspicious paths through the graph.
+- **Time-proximity scoring** — Events that happen closer together in time receive higher correlation scores.
+- **YAML-based correlation rules** — Make correlation rules loadable and community-contributable, same as detection rules.
+- **Tuning feedback loop** — When a user dismisses a finding, automatically increase the detection threshold for that pattern. The system learns from the user over time.
+
+### Phase 4 — AI as Reasoning Engine
+
+This is the pivot that makes Artemis genuinely AI-centric rather than AI-decorated.
+
+- **Behavioral baselining** — Use the local LLM to learn what "normal" looks like for this specific machine over days and weeks. Normal processes, normal network patterns, normal file activity. The AI reasons about whether deviations are concerning given the full context.
+- **Anomaly detection** — Flag deviations from the learned baseline. "This process has never run before" or "Network traffic to this IP started today" are more useful signals than static pattern matching alone.
+- **Guided remediation conversations** — Instead of presenting buttons to kill processes or block IPs, the AI walks non-technical users through the decision: "I noticed something unusual. Here is what I see. Here is what I think it means. Here are your options. Would you like me to handle it?"
+- **Triage and prioritization** — When multiple findings exist, the AI explains which ones actually matter, why, and in what order to address them. Context-aware prioritization, not just severity sorting.
+- **Natural language rule creation** — Users can create custom detection rules in plain English: "Alert me when someone logs in after midnight" or "Notify me if a new program starts from the Downloads folder."
+
+### Phase 5 — Shield Experience Overhaul
+
+Shield mode needs to speak entirely in human language, not security metrics.
+
+- **Plain statements instead of numbers** — "Nothing unusual happened today" instead of "247 events monitored." "A new device joined your network 20 minutes ago" instead of "Network Devices: 12."
+- **Proactive notifications** — The system reaches out when something matters, not just when the user checks the dashboard.
+- **Guided security checkup** — A wizard that walks users through improving their security score step by step, explaining each recommendation in plain language.
+- **Activity timeline in human language** — The alert narrator becomes the primary Shield interface. Every event is a sentence, not a data point.
+- **One-click actions** — "Block this," "Ignore this," "Tell me more" — simple choices for non-technical users.
+- **Weekly digest** — Automated summary of the week: what happened, what changed, what improved.
+
+### Phase 6 — Distribution and Community
+
+- **One-click installer** — Windows installer via Inno Setup with all dependencies bundled.
+- **Auto-update for detection rules** — Pull updated rule files from a central repository without requiring a full application update.
+- **Community rule repository** — A place for users to share and contribute detection and correlation rules.
+- **Documentation** — Setup guides, user guides, and contribution guides.
+- **Cross-platform foundations** — Basic Linux support for broader reach.
+
+## Contributing
+
+This project is in early development. If you are interested in contributing, testing, or providing feedback, open an issue or reach out. Detection rules, scanner plugins, and correlation rules are the easiest places to start.
 
 ## License
 
