@@ -4,30 +4,116 @@
 
 {% block content %}
 <div x-data="alertsPage()" x-init="init()">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
         <h2 style="color: var(--amber); font-family: var(--font-mono); font-size: 16px;">[!] ALERTS</h2>
-        <span class="mono" style="color: var(--text-muted);" x-text="alerts.length + ' open'"></span>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <span class="mono" style="color: var(--text-muted); font-size: 12px;" x-text="plainAlerts.length + ' alerts'"></span>
+            <button @click="viewMode = viewMode === 'plain' ? 'technical' : 'plain'"
+                style="background: var(--bg-card); border: 1px solid var(--border); color: var(--amber); padding: 6px 12px; border-radius: 4px; font-family: var(--font-mono); font-size: 11px; cursor: pointer;">
+                <span x-text="viewMode === 'plain' ? '[TECHNICAL VIEW]' : '[SIMPLE VIEW]'"></span>
+            </button>
+        </div>
     </div>
 
-    <template x-if="alerts.length === 0">
-        <div class="card">
-            <p style="color: var(--text-muted); padding: 20px; text-align: center;">No open alerts. All clear.</p>
+    <!-- Summary bar -->
+    <template x-if="summary">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 20px;">
+            <div class="card" style="padding: 12px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 800; color: var(--amber); font-family: var(--font-mono);" x-text="summary.active"></div>
+                <div style="font-size: 11px; color: var(--text-muted);">ACTIVE</div>
+            </div>
+            <template x-for="[label, count] in Object.entries(summary.by_severity || {})" :key="label">
+                <div class="card" style="padding: 12px; text-align: center;">
+                    <div style="font-size: 24px; font-weight: 800; font-family: var(--font-mono);"
+                         :style="'color:' + labelColor(label)" x-text="count"></div>
+                    <div style="font-size: 11px; color: var(--text-muted);" x-text="label.toUpperCase()"></div>
+                </div>
+            </template>
         </div>
     </template>
 
-    <template x-for="alert in alerts" :key="alert.id">
-        <div class="card" style="border-left: 3px solid;" :style="'border-left-color:' + severityColor(alert.severity)">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h3 style="margin-bottom: 4px;" x-text="alert.title"></h3>
-                    <p style="color: var(--text-secondary); font-size: 13px;" x-text="alert.description"></p>
+    <!-- No alerts state -->
+    <template x-if="plainAlerts.length === 0 && alerts.length === 0">
+        <div class="card">
+            <p style="color: var(--text-muted); padding: 20px; text-align: center;">No open alerts. All clear. ✓</p>
+        </div>
+    </template>
+
+    <!-- PLAIN VIEW (non-technical) -->
+    <template x-if="viewMode === 'plain'">
+        <div>
+            <template x-for="alert in plainAlerts" :key="alert.id">
+                <div class="card" style="border-left: 3px solid; margin-bottom: 8px;"
+                     :style="'border-left-color:' + labelColor(alert.severity_label)">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                <span style="font-size: 18px;" x-text="alert.severity_icon"></span>
+                                <h3 style="margin: 0; font-size: 14px; font-weight: 700;" x-text="alert.headline"></h3>
+                            </div>
+                            <p style="color: var(--text-secondary); font-size: 13px; margin: 0 0 8px; line-height: 1.5;" x-text="alert.plain"></p>
+                            <div style="background: rgba(255,191,0,0.08); border: 1px solid rgba(255,191,0,0.2); border-radius: 4px; padding: 8px 12px; font-size: 12px;">
+                                <strong style="color: var(--amber);">What to do:</strong>
+                                <span style="color: var(--text-secondary);" x-text="alert.action"></span>
+                            </div>
+                        </div>
+                        <button @click="dismiss(alert.id)" title="Dismiss"
+                            style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 4px 8px; flex-shrink: 0;">✕</button>
+                    </div>
+                    <div style="margin-top: 8px; font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">
+                        <span x-text="new Date(alert.timestamp * 1000).toLocaleString()"></span>
+                        <span style="margin-left: 12px; opacity: 0.6;" x-text="alert.source"></span>
+                    </div>
                 </div>
-                <span class="badge" :class="severityClass(alert.severity)" x-text="severityLabel(alert.severity)"></span>
-            </div>
-            <div style="margin-top: 12px; font-size: 12px; color: var(--text-muted);">
-                <span class="mono" x-text="alert.timestamp"></span>
-                <span style="margin-left: 16px;" x-text="'Events: ' + (alert.event_ids?.length || 0)"></span>
-            </div>
+            </template>
+        </div>
+    </template>
+
+    <!-- TECHNICAL VIEW -->
+    <template x-if="viewMode === 'technical'">
+        <div>
+            <template x-for="alert in plainAlerts" :key="alert.id">
+                <div class="card" style="border-left: 3px solid; margin-bottom: 8px;"
+                     :style="'border-left-color:' + labelColor(alert.severity_label)">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 4px;">
+                                <code style="color: var(--amber); font-size: 11px;" x-text="alert.event_type"></code>
+                                <span class="badge" :style="'background:' + labelColor(alert.severity_label) + '22; color:' + labelColor(alert.severity_label)"
+                                      x-text="alert.severity_label"></span>
+                            </div>
+                            <h3 style="margin: 0 0 4px; font-size: 13px;" x-text="alert.headline"></h3>
+                            <p style="color: var(--text-muted); font-size: 12px; font-family: var(--font-mono); margin: 0; word-break: break-all;" x-text="alert.technical"></p>
+                        </div>
+                        <button @click="dismiss(alert.id)" title="Dismiss"
+                            style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 4px 8px; flex-shrink: 0;">✕</button>
+                    </div>
+                    <div style="margin-top: 8px; font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">
+                        <span x-text="new Date(alert.timestamp * 1000).toLocaleString()"></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </template>
+
+    <!-- Fallback: raw DB alerts (if narrator has none yet) -->
+    <template x-if="plainAlerts.length === 0 && alerts.length > 0">
+        <div>
+            <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 12px;">Showing raw alerts (narrator not yet populated):</p>
+            <template x-for="alert in alerts" :key="alert.id">
+                <div class="card" style="border-left: 3px solid;" :style="'border-left-color:' + severityColor(alert.severity)">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <h3 style="margin-bottom: 4px;" x-text="alert.title"></h3>
+                            <p style="color: var(--text-secondary); font-size: 13px;" x-text="alert.description"></p>
+                        </div>
+                        <span class="badge" :class="severityClass(alert.severity)" x-text="severityLabel(alert.severity)"></span>
+                    </div>
+                    <div style="margin-top: 12px; font-size: 12px; color: var(--text-muted);">
+                        <span class="mono" x-text="alert.timestamp"></span>
+                    </div>
+                </div>
+            </template>
         </div>
     </template>
 </div>
@@ -38,18 +124,42 @@
 function alertsPage() {
     return {
         alerts: [],
+        plainAlerts: [],
+        summary: null,
+        viewMode: 'plain',
+
         async init() {
             await this.refresh();
             setInterval(() => this.refresh(), 10000);
         },
+
         async refresh() {
             try {
-                this.alerts = await fetch('/api/alerts').then(r => r.json());
+                const [raw, plain, sum] = await Promise.all([
+                    fetch('/api/alerts').then(r => r.json()).catch(() => []),
+                    fetch('/api/alerts/plain').then(r => r.json()).catch(() => []),
+                    fetch('/api/alerts/summary').then(r => r.json()).catch(() => null),
+                ]);
+                this.alerts = raw;
+                this.plainAlerts = plain;
+                this.summary = sum;
             } catch (e) { console.error(e); }
         },
+
+        async dismiss(id) {
+            try {
+                await fetch(`/api/alerts/${id}/dismiss`, { method: 'POST' });
+                this.plainAlerts = this.plainAlerts.filter(a => a.id !== id);
+            } catch (e) { console.error(e); }
+        },
+
         severityClass(s) { return ['low','low','medium','high','critical'][s] || 'low'; },
         severityLabel(s) { return ['INFO','LOW','MED','HIGH','CRIT'][s] || 'INFO'; },
         severityColor(s) { return ['#2ecc71','#2ecc71','#f1c40f','#f5a623','#e74c3c'][s] || '#2ecc71'; },
+        labelColor(label) {
+            const m = { 'Info': '#2ecc71', 'Low': '#3498db', 'Medium': '#f1c40f', 'High': '#e74c3c', 'Critical': '#ff0040' };
+            return m[label] || '#888';
+        },
     };
 }
 </script>

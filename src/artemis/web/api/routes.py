@@ -101,6 +101,33 @@ async def get_alerts() -> list[dict]:
     return results
 
 
+# ── Plain-Language Alerts (Narrator) ──────────────────────────────────
+
+@router.get("/alerts/plain")
+async def get_plain_alerts(limit: int = 50) -> list[dict]:
+    """Get alerts translated into plain English."""
+    s = _get_state()
+    return s.narrator.get_alerts(limit=limit)
+
+
+@router.get("/alerts/summary")
+async def get_alert_summary() -> dict:
+    """Get alert summary with severity breakdown."""
+    s = _get_state()
+    return s.narrator.get_summary()
+
+
+@router.post("/alerts/{alert_id}/dismiss")
+async def dismiss_plain_alert(alert_id: str) -> dict:
+    """Dismiss a plain-language alert."""
+    s = _get_state()
+    ok = s.narrator.dismiss(alert_id)
+    if not ok:
+        from fastapi import HTTPException
+        raise HTTPException(404, "Alert not found")
+    return {"dismissed": True}
+
+
 # ── Network ───────────────────────────────────────────────────────────
 
 @router.get("/network/hosts")

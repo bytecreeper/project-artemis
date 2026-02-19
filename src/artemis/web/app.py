@@ -21,6 +21,7 @@ from artemis.edr.plugin_base import load_plugins
 from artemis.network.scanner import NetworkScanner
 from artemis.web.sse import sse_manager
 from artemis.core.threat_classifier import classifier
+from artemis.ai.alert_narrator import AlertNarrator
 
 logger = logging.getLogger("artemis.web")
 
@@ -44,6 +45,7 @@ class ArtemisApp:
             scan_range=config.network.scan_range,
             interval=config.network.scan_interval_seconds,
         )
+        self.narrator = AlertNarrator(ai_provider=self.ai)
         self.edr_plugins: list = []
         self.start_time = time.time()
 
@@ -104,6 +106,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Start threat classifier
     await classifier.start(bus)
 
+    # Start plain-language alert narrator
+    await state.narrator.start(bus)
+
     # Start SSE manager (real-time event push)
     await sse_manager.start(bus)
 
@@ -119,6 +124,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await plugin.stop()
     if config.correlation.enabled:
         await state.correlation.stop()
+    await state.narrator.stop()
     await bus.stop()
     state.db.close()
     logger.info("Shutdown complete")
