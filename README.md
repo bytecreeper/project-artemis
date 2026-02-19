@@ -52,7 +52,7 @@ The interface has two modes:
 2. **Clone the repository**
 
    ```
-   git clone https://github.com/whisperrr-ux/project-artemis.git
+   git clone https://github.com/ByteCreeper/project-artemis.git
    cd project-artemis
    ```
 
@@ -97,21 +97,150 @@ The interface has two modes:
 
 ## Configuration
 
-The default configuration is in `config/default.toml`. To customize, copy it to `config/local.toml` and edit as needed. The local file overrides the defaults.
+### Quick Start
 
-Key settings:
+On first run, Artemis auto-generates an API token and saves it to `config/local.toml`. This token is required for all dashboard and API access. You will see it printed in the console output:
+
+```
+============================================================
+FIRST RUN — API token generated
+Token: <your-token-here>
+Saved to: config/local.toml
+Include in requests: Authorization: Bearer <your-token-here>
+============================================================
+```
+
+Open http://127.0.0.1:8000/login in your browser and paste the token to log in. The token is also stored as a browser cookie so you stay logged in.
+
+### Custom Configuration
+
+The default configuration is in `config/default.toml`. To customize settings, copy it to `config/local.toml` and edit as needed. The local file overrides the defaults and is gitignored (never committed).
+
+```
+copy config\default.toml config\local.toml
+```
+
+Then edit `config/local.toml` with your settings.
+
+### Network Setup
+
+The most important setting to change is `network.scan_range`. Set this to YOUR local network:
+
+```toml
+[network]
+scan_range = "192.168.1.0/24"    # Change to your network range
+scan_interval_seconds = 60
+```
+
+To find your network range on Windows:
+```
+ipconfig
+```
+Look for your IPv4 address (e.g., `192.168.1.105`). If your IP is `192.168.1.x`, your range is likely `192.168.1.0/24`. If your IP is `10.0.0.x`, use `10.0.0.0/24`.
+
+### AI Provider Setup
+
+Artemis works without any AI provider. All detection, scoring, and remediation is fully deterministic. AI adds natural language explanations and investigation assistance.
+
+**Option 1: Local AI with Ollama (recommended, free, private)**
+
+Install Ollama from https://ollama.com, then pull a model:
+```
+ollama pull deepseek-r1:70b
+```
+Or for lower-resource machines:
+```
+ollama pull deepseek-r1:7b
+```
+
+No configuration needed — Artemis detects Ollama automatically at `http://localhost:11434`.
+
+**Option 2: OpenAI API**
+
+```toml
+[ai]
+provider = "openai"
+model = "gpt-4o"
+api_key = "sk-your-key-here"     # Get from https://platform.openai.com/api-keys
+```
+
+**Option 3: No AI**
+
+```toml
+[ai]
+provider = "none"
+```
+
+All security features work identically. You just lose natural language explanations.
+
+### Authentication
+
+Authentication is enabled by default. On first run, a secure random token is generated and saved to `config/local.toml`. You can also set your own:
+
+```toml
+[web]
+auth_enabled = true
+api_key = "your-custom-token-here"
+```
+
+To disable authentication (not recommended for anything other than local testing):
+
+```toml
+[web]
+auth_enabled = false
+```
+
+**API access** uses the same token via the `Authorization` header:
+
+```
+curl -H "Authorization: Bearer <your-token>" http://127.0.0.1:8000/api/health
+```
+
+### File Integrity Monitoring
+
+By default, FIM watches `C:\Users` and `C:\Windows\System32`. You can customize:
+
+```toml
+[edr.file_integrity]
+watch_paths = ["C:\\Users", "C:\\Windows\\System32", "C:\\Program Files"]
+poll_interval_seconds = 30
+```
+
+### All Settings Reference
 
 | Setting | Default | Description |
 |---|---|---|
 | `ai.provider` | `ollama` | AI backend: `ollama`, `openai`, or `none` |
 | `ai.model` | `deepseek-r1:70b` | Model name for the selected provider |
+| `ai.base_url` | `http://localhost:11434` | Ollama server URL (change if running remotely) |
+| `ai.timeout_seconds` | `120` | Timeout for AI requests |
+| `ai.api_key` | (empty) | API key for cloud AI providers (OpenAI, etc.) |
+| `web.host` | `127.0.0.1` | Bind address (`0.0.0.0` to allow remote access) |
 | `web.port` | `8000` | Port for the web dashboard |
+| `web.auth_enabled` | `true` | Require token authentication |
+| `edr.enabled` | `true` | Enable/disable all EDR monitoring |
 | `edr.plugins` | `sysmon, process_monitor, file_integrity` | Which EDR plugins to enable |
 | `edr.file_integrity.watch_paths` | `C:\Users, C:\Windows\System32` | Directories to monitor for file changes |
-| `network.scan_range` | `192.168.4.0/22` | Network range for host discovery |
+| `edr.file_integrity.poll_interval_seconds` | `30` | How often to check for file changes |
+| `edr.sysmon_auto_install` | `false` | Auto-install Sysmon if not present |
+| `network.enabled` | `true` | Enable network scanning |
+| `network.scan_range` | `192.168.1.0/24` | Your local network range |
+| `network.scan_interval_seconds` | `60` | How often to scan the network |
+| `correlation.enabled` | `true` | Enable threat correlation |
 | `correlation.window_seconds` | `300` | Time window for correlating related events |
+| `correlation.min_chain_score` | `7.0` | Minimum score to trigger a correlated alert |
+| `database.path` | `data/artemis.duckdb` | Path to the DuckDB database file |
 
-Environment variables are also supported using the pattern `ARTEMIS_SECTION__KEY`. For example: `ARTEMIS_AI__PROVIDER=openai`.
+### Environment Variables
+
+All settings can be overridden with environment variables using the pattern `ARTEMIS_SECTION__KEY`:
+
+```
+set ARTEMIS_AI__PROVIDER=openai
+set ARTEMIS_WEB__PORT=9000
+set ARTEMIS_WEB__AUTH_ENABLED=false
+set ARTEMIS_NETWORK__SCAN_RANGE=10.0.0.0/24
+```
 
 ## Architecture
 
@@ -232,19 +361,33 @@ Test files P0, P1, and P2 are standalone runners. P3 and P4 use pytest directly.
 
 ## Current Status
 
-Under active development. 117 tests passing across all modules. Core EDR monitoring, vulnerability scanning (10 scanners), adversary simulation (12 MITRE techniques), threat correlation, AI chat interface, and Shield/Archer dual-mode UI are all functional. AI features work with Ollama or degrade gracefully without it.
+Under active development. 117 tests passing across all modules.
+
+What is working today:
+
+- Bearer token authentication with auto-generated keys and login page
+- All findings, investigations, scan results, alerts, and security scores persist to DuckDB across restarts
+- Security score history tracked over time
+- Core EDR monitoring (Sysmon, process tracking, file integrity)
+- 10 vulnerability scanners operational
+- 12 adversary simulation techniques (non-destructive, MITRE ATT&CK mapped)
+- Threat correlation engine with MITRE mapping
+- AI chat interface with 10 query intents
+- AI investigation agent and plain-language alert narrator
+- Automated HTML security report generation
+- Shield (novice) and Archer (professional) dual-mode UI
+- AI features work with Ollama or degrade gracefully without it
 
 ## Roadmap
 
 Development is organized into six phases. Each phase builds on the previous one.
 
-### Phase 1 — Foundation Hardening
+### Phase 1 — Foundation Hardening (complete)
 
-The current build works but has gaps that need to be closed before anything else.
-
-- **Authentication** — Bearer token auth for all API endpoints. Token generated on first run. Without this, anyone on the local network has full access to remediation actions.
-- **Persistent findings** — Security findings, investigations, scan results, and alerts are currently stored in memory. They disappear on restart. All of these need to be persisted to DuckDB so the system maintains continuity across restarts.
-- **Security score history** — Track the security score over time so users can see whether their posture is improving or degrading.
+- Bearer token authentication for all API and page routes, auto-generated on first run
+- Login page with cookie-based sessions
+- Findings, investigations, scan results, plain-language alerts, and security score history all persisted to DuckDB
+- Data survives restarts. Score tracked every 15 minutes for trend analysis.
 
 ### Phase 2 — Detection Overhaul
 

@@ -6,7 +6,7 @@ and human-readable answers. Inspired by Endgame's Artemis (2017).
 Non-technical users ask: "What happened today?"
 They get: "Your system has been quiet. 12 events logged, all routine. No threats detected."
 
-Security pros ask: "Show me all failed SSH attempts from 192.168.4.50 in the last 6 hours"
+Security pros ask: "Show me all failed SSH attempts from 192.168.1.50 in the last 6 hours"
 They get: structured results + AI analysis.
 """
 

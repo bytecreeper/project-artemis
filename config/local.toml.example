@@ -1,0 +1,24 @@
+# Artemis Local Configuration
+# Copy this file to config/local.toml and customize for your environment.
+# This file overrides settings in config/default.toml.
+# NEVER commit local.toml — it may contain API keys and tokens.
+
+[ai]
+provider = "ollama"              # ollama | openai | none
+model = "deepseek-r1:70b"       # or "deepseek-r1:7b" for lower-resource machines
+# base_url = "http://localhost:11434"  # Change if Ollama is on another machine
+# api_key = ""                   # Only needed for cloud providers (OpenAI, etc.)
+
+[web]
+host = "127.0.0.1"              # Use "0.0.0.0" to allow remote access
+port = 8000
+auth_enabled = true
+# api_key = ""                   # Auto-generated on first run. Set manually to use your own.
+
+[network]
+scan_range = "192.168.1.0/24"   # CHANGE THIS to your local network range
+                                 # Run 'ipconfig' to find your subnet
+
+[edr.file_integrity]
+watch_paths = ["C:\\Users", "C:\\Windows\\System32"]
+poll_interval_seconds = 30

@@ -31,7 +31,7 @@ poll_interval_seconds = 30
 
 [network]
 enabled = true
-scan_range = "192.168.4.0/22"
+scan_range = "192.168.1.0/24"
 scan_interval_seconds = 60
 
 [correlation]
