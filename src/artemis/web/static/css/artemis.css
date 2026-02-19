@@ -136,7 +136,7 @@ body {
 }
 
 .mode-toggle .mode-icon {
-    height: 20px;
+    height: 24px;
     width: auto;
     opacity: 0.8;
 }
@@ -197,14 +197,13 @@ body {
 
 .sidebar-logo {
     text-align: center;
-    padding: 16px 20px 20px;
+    padding: 4px 12px 12px;
     border-bottom: 1px solid var(--border);
     margin-bottom: 8px;
 }
 
 .sidebar-logo img {
-    width: 85%;
-    max-width: 200px;
+    width: 100%;
     height: auto;
     opacity: 0.95;
     transition: all var(--transition);
@@ -214,7 +213,6 @@ body {
 .sidebar-logo img:hover {
     opacity: 1;
     filter: drop-shadow(0 4px 16px rgba(245, 166, 35, 0.25));
-    transform: scale(1.02);
 }
 
 .sidebar-logo .mode-label {
@@ -223,7 +221,7 @@ body {
     letter-spacing: 3px;
     text-transform: uppercase;
     color: var(--text-muted);
-    margin-top: 10px;
+    margin-top: 6px;
 }
 
 .sidebar a {
