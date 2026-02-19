@@ -13,11 +13,18 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 
 def _ctx(request: Request, **kwargs) -> dict:
-    """Build template context with view_mode detection."""
+    """Build template context with view_mode detection.
+    
+    Priority: ?mode= param > path-based detection > simple default.
+    """
+    # Explicit mode param wins
+    mode_param = request.query_params.get("mode")
+    if mode_param in ("ops", "simple"):
+        return {"request": request, "view_mode": mode_param, **kwargs}
+
+    # Path-based: these are always ops
     path = request.url.path
-    # Simple view: /, /alerts, /network, /settings (when accessed from simple nav)
-    # Ops view: /ops, /guardian, /hunt, /events, /generate
-    ops_paths = ("/ops", "/guardian", "/hunt", "/events", "/generate")
+    ops_paths = ("/ops", "/guardian", "/hunt", "/events", "/generate", "/scan")
     view_mode = "ops" if any(path.startswith(p) for p in ops_paths) else "simple"
     return {"request": request, "view_mode": view_mode, **kwargs}
 
@@ -50,17 +57,12 @@ async def hunt(request: Request) -> HTMLResponse:
 
 @router.get("/alerts", response_class=HTMLResponse)
 async def alerts(request: Request) -> HTMLResponse:
-    # Detect referrer to choose view mode
-    ref = request.headers.get("referer", "")
-    view_mode = "ops" if "/ops" in ref or "/guardian" in ref or "/hunt" in ref or "/events" in ref else "simple"
-    return templates.TemplateResponse("alerts.html", {"request": request, "view_mode": view_mode, "active": "alerts"})
+    return templates.TemplateResponse("alerts.html", _ctx(request, active="alerts"))
 
 
 @router.get("/network", response_class=HTMLResponse)
 async def network(request: Request) -> HTMLResponse:
-    ref = request.headers.get("referer", "")
-    view_mode = "ops" if "/ops" in ref or "/guardian" in ref or "/hunt" in ref or "/events" in ref else "simple"
-    return templates.TemplateResponse("network.html", {"request": request, "view_mode": view_mode, "active": "network"})
+    return templates.TemplateResponse("network.html", _ctx(request, active="network"))
 
 
 @router.get("/events", response_class=HTMLResponse)
@@ -75,9 +77,7 @@ async def generate(request: Request) -> HTMLResponse:
 
 @router.get("/settings", response_class=HTMLResponse)
 async def settings(request: Request) -> HTMLResponse:
-    ref = request.headers.get("referer", "")
-    view_mode = "ops" if "/ops" in ref or "/guardian" in ref or "/hunt" in ref or "/events" in ref else "simple"
-    return templates.TemplateResponse("settings.html", {"request": request, "view_mode": view_mode, "active": "settings"})
+    return templates.TemplateResponse("settings.html", _ctx(request, active="settings"))
 
 
 # Vulnerability Scanner
@@ -89,9 +89,7 @@ async def scan(request: Request) -> HTMLResponse:
 # Reports
 @router.get("/reports", response_class=HTMLResponse)
 async def reports(request: Request) -> HTMLResponse:
-    ref = request.headers.get("referer", "")
-    view_mode = "ops" if "/ops" in ref or "/guardian" in ref or "/hunt" in ref or "/events" in ref else "simple"
-    return templates.TemplateResponse("reports.html", {"request": request, "view_mode": view_mode, "active": "reports"})
+    return templates.TemplateResponse("reports.html", _ctx(request, active="reports"))
 
 
 # Chat — Natural Language Interface
