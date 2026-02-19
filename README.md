@@ -34,15 +34,78 @@ Core capabilities:
 - **Adversary simulation** — 12 non-destructive MITRE ATT&CK techniques for testing your defenses
 - **Remediation engine** — verified actions (kill process, quarantine file, block IP) with rollback support
 
-The interface has two modes:
+The interface has two modes, each designed for a fundamentally different user:
+
+---
 
 <p align="center">
-  <img src="docs/images/logo_shield.png" alt="Artemis Shield" width="220">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="docs/images/logo_archer.png" alt="Artemis Archer" width="220">
+  <img src="docs/images/logo_shield.png" alt="Artemis Shield" width="280">
 </p>
 
-- **Shield** — designed for non-technical users. Clean, simple, confidence-building. Shows your security score, protection status, and recent activity in plain language.
-- **Archer** — designed for security professionals. Graphs, charts, live event feeds, hunt tools, correlation timelines, and full investigation capabilities.
+### Shield — Protection for Everyone
+
+Shield is the face of Artemis for people who are not security professionals and never will be. The office manager at a small nonprofit. The volunteer running IT for a community center. The small business owner who knows they should care about security but has no idea where to start.
+
+Shield does not show event counts, severity matrices, or MITRE ATT&CK identifiers. It speaks in plain language. Instead of "247 events monitored, 3 findings at severity 6," Shield says: "Your system has been quiet today. Three things need your attention — here is what they are and what you can do about them."
+
+The centerpiece is a security score that reflects the actual state of the machine, not an abstract metric. When the score changes, Shield explains why in a sentence a non-technical person can understand. When action is needed, Shield walks the user through it step by step, confirming before making any changes.
+
+**What Shield provides today:**
+- Animated security score with real-time protection status
+- Activity feed with plain-language descriptions of system events
+- AI-narrated alerts that translate technical findings into clear explanations
+- One-click access to security reports written for a general audience
+
+**Where Shield is headed:**
+- Proactive notifications ("A new device joined your network 20 minutes ago")
+- Guided security checkup wizard that walks users through improving their score
+- Full activity timeline in human language where every event is a sentence, not a data point
+- One-click actions: "Block this," "Ignore this," "Tell me more"
+- Weekly digest summarizing what happened, what changed, and what improved
+
+The goal is that someone with no security background can open Shield, immediately understand whether their system is healthy, and take meaningful action when it is not. No jargon. No dashboards full of numbers. Just clear, honest, helpful information.
+
+---
+
+<p align="center">
+  <img src="docs/images/logo_archer.png" alt="Artemis Archer" width="280">
+</p>
+
+### Archer — Tools for the Hunt
+
+Archer is where the technical depth lives. It is built for security analysts, IT administrators, incident responders, and anyone who wants full visibility into what is happening on a system and why.
+
+Archer provides the raw data, the correlation chains, the investigation tools, and the simulation capabilities that professionals expect. It assumes the user knows what a process tree is, understands MITRE ATT&CK, and wants access to the underlying evidence behind every finding.
+
+**What Archer provides today:**
+- Real-time event dashboard with live SSE feeds from all EDR plugins
+- Threat correlation timeline showing multi-event attack chains mapped to MITRE ATT&CK
+- Hunt interface with search, filtering, and AI-assisted event analysis
+- AI investigation agent that examines findings in depth and produces structured reports
+- 10 vulnerability scanners (ports, SSL, SMB, default credentials, Windows configuration, password policy, audit policy, PowerShell policy, network shares, autoruns)
+- Adversary simulation with 12 non-destructive MITRE ATT&CK techniques across 6 tactics
+- Remediation engine with verified actions (kill process, quarantine file, block IP) and rollback
+- Security score history with trend analysis over time via Chart.js dashboards
+- Full HTML report generation with findings, evidence, and remediation steps
+
+**Where Archer is headed:**
+- Externalized YAML detection rules that can be updated without code changes
+- Session-based correlation that groups events by logon session, not just process ID
+- Entity relationship graphs mapping process-to-file-to-network-to-registry connections
+- Behavioral baselining powered by local AI — learn what "normal" looks like for this specific machine
+- Anomaly detection that flags deviations with context-aware reasoning
+- Natural language rule creation ("alert me when someone logs in after midnight")
+- AI-driven triage that explains which findings actually matter, why, and in what order
+
+Archer is the workbench. It is where you dig into incidents, run simulations against your own defenses, and build an understanding of your environment that goes beyond pattern matching.
+
+---
+
+### Two Modes, One Platform
+
+Shield and Archer share the same backend, the same detection engine, the same data. The difference is entirely in presentation and interaction. A finding detected by the correlation engine appears in Shield as "Something unusual happened with a program on your computer — here is what I recommend" and in Archer as a correlated event chain with process IDs, timestamps, MITRE technique mappings, and raw evidence.
+
+Switch between modes at any time using the sidebar toggle or the `?mode=ops` / `?mode=simple` query parameter. Pages that are exclusively operational (hunt, simulation, raw events) only appear in Archer. Pages that both audiences need (home, alerts, reports, network, chat) adapt their presentation to the active mode.
 
 ## Requirements
 
