@@ -352,6 +352,7 @@ async def run_scan(req: ScanRequest) -> dict[str, Any]:
     s = _get_state()
     from artemis.scanner.base import ScanEngine, ScanTarget
     import artemis.scanner.plugins  # noqa — registers plugins
+    import artemis.scanner.config_audit  # noqa — registers config audit plugins
 
     engine = ScanEngine()
     engine.load_scanners(req.scanners)
@@ -402,6 +403,7 @@ async def list_scanners() -> list[dict]:
     """List available scanner plugins."""
     from artemis.scanner.base import ScannerPlugin
     import artemis.scanner.plugins  # noqa
+    import artemis.scanner.config_audit  # noqa
     return [
         {"name": cls.name, "description": cls.description, "category": cls.category}
         for cls in ScannerPlugin._registry
