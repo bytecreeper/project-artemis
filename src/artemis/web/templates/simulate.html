@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Adversary Simulation — Artemis{% endblock %}
+
+{% block content %}
+<div x-data="simApp()" x-init="loadTechniques()" style="padding: 24px;">
+    <div style="margin-bottom: 24px;">
+        <h2 style="font-family: var(--font-mono); color: var(--amber); font-size: 18px; margin: 0;">[X] ADVERSARY SIMULATION</h2>
+        <p style="color: var(--text-muted); font-size: 13px; margin: 4px 0 0;">
+            Test your defenses by simulating MITRE ATT&CK techniques. Safe, non-destructive, with full cleanup.
+        </p>
+    </div>
+
+    <!-- Controls -->
+    <div style="display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;">
+        <button @click="runAll()" :disabled="running"
+            style="background: var(--amber); color: var(--bg-primary); border: none; padding: 12px 24px; border-radius: 6px; font-family: var(--font-mono); font-weight: 700; cursor: pointer;"
+            :style="running ? 'opacity:0.5;cursor:not-allowed;' : ''">
+            <span x-show="!running">RUN ALL TECHNIQUES</span>
+            <span x-show="running">SIMULATING...</span>
+        </button>
+    </div>
+
+    <!-- Status -->
+    <div x-show="statusMsg" x-transition style="padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; font-family: var(--font-mono); background: rgba(255,191,0,0.1); border: 1px solid rgba(255,191,0,0.3); color: var(--amber);" x-text="statusMsg"></div>
+
+    <!-- Coverage Summary -->
+    <template x-if="campaign">
+        <div style="margin-bottom: 24px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                <div class="sim-stat">
+                    <div style="font-size: 28px; font-weight: 800; font-family: var(--font-mono); color: var(--amber);" x-text="campaign.techniques_run"></div>
+                    <div style="font-size: 11px; color: var(--text-muted);">TECHNIQUES</div>
+                </div>
+                <div class="sim-stat">
+                    <div style="font-size: 28px; font-weight: 800; font-family: var(--font-mono); color: #00ff41;" x-text="campaign.detected"></div>
+                    <div style="font-size: 11px; color: #00ff41;">DETECTED</div>
+                </div>
+                <div class="sim-stat">
+                    <div style="font-size: 28px; font-weight: 800; font-family: var(--font-mono); color: #ff3333;" x-text="campaign.missed"></div>
+                    <div style="font-size: 11px; color: #ff3333;">MISSED</div>
+                </div>
+                <div class="sim-stat">
+                    <div style="font-size: 28px; font-weight: 800; font-family: var(--font-mono);"
+                         :style="campaign.coverage_pct >= 70 ? 'color:#00ff41' : campaign.coverage_pct >= 40 ? 'color:#ffbf00' : 'color:#ff3333'"
+                         x-text="campaign.coverage_pct + '%'"></div>
+                    <div style="font-size: 11px; color: var(--text-muted);">COVERAGE</div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Results -->
+    <template x-if="campaign && campaign.results">
+        <div>
+            <h3 style="font-family: var(--font-mono); color: var(--amber); font-size: 14px; margin: 0 0 12px;">TECHNIQUE RESULTS</h3>
+            <template x-for="r in campaign.results" :key="r.id">
+                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 12px;">
+                    <div :style="r.detected ? 'color:#00ff41' : r.status === 'error' ? 'color:#888' : 'color:#ff3333'"
+                         style="font-size: 20px; flex-shrink: 0; width: 28px; text-align: center;"
+                         x-text="r.detected ? '✓' : r.status === 'error' ? '⚠' : '✗'"></div>
+                    <div style="flex: 1;">
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <code style="color: var(--amber); font-size: 12px;" x-text="r.technique_id"></code>
+                            <span style="font-weight: 700;" x-text="r.technique_name"></span>
+                            <span style="font-size: 11px; color: var(--text-muted); background: var(--bg-primary); padding: 2px 8px; border-radius: 3px;" x-text="r.tactic"></span>
+                        </div>
+                        <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;" x-text="r.description"></div>
+                        <div style="font-size: 11px; margin-top: 6px; font-family: var(--font-mono);"
+                             :style="r.detected ? 'color:#00ff41' : 'color:#ff3333'"
+                             x-text="r.detected ? 'DETECTED — ' + r.detection_source : r.status === 'error' ? 'ERROR — ' + r.error : 'NOT DETECTED — defense gap'"></div>
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); white-space: nowrap;" x-text="r.duration_seconds + 's'"></div>
+                </div>
+            </template>
+        </div>
+    </template>
+
+    <!-- Available techniques (before run) -->
+    <template x-if="!campaign && techniques.length > 0">
+        <div>
+            <h3 style="font-family: var(--font-mono); color: var(--amber); font-size: 14px; margin: 0 0 12px;">AVAILABLE TECHNIQUES (<span x-text="techniques.length"></span>)</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 8px;">
+                <template x-for="t in techniques" :key="t.id">
+                    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 12px;">
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <code style="color: var(--amber); font-size: 12px;" x-text="t.id"></code>
+                            <span style="font-weight: 600; font-size: 13px;" x-text="t.name"></span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;" x-text="t.tactic"></div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </template>
+</div>
+
+<style>
+    .sim-stat {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 16px;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function simApp() {
+    return {
+        techniques: [],
+        campaign: null,
+        running: false,
+        statusMsg: '',
+
+        async loadTechniques() {
+            try {
+                const r = await fetch('/api/simulate/techniques');
+                this.techniques = await r.json();
+            } catch(e) {}
+        },
+
+        async runAll() {
+            this.running = true;
+            this.campaign = null;
+            this.statusMsg = 'Running adversary simulation — this may take a minute...';
+            try {
+                const r = await fetch('/api/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({}),
+                });
+                this.campaign = await r.json();
+                this.statusMsg = `Campaign complete — ${this.campaign.coverage_pct}% detection coverage`;
+            } catch(e) {
+                this.statusMsg = 'Simulation failed: ' + e.message;
+            }
+            this.running = false;
+        }
+    };
+}
+</script>
+{% endblock %}

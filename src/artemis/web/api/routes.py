@@ -466,6 +466,57 @@ async def list_investigations() -> list[dict]:
     return [s._investigator.to_dict(inv) for inv in s._investigator.investigations[-20:]]
 
 
+# ── Adversary Simulation ──────────────────────────────────────────────
+
+class SimulateRequest(BaseModel):
+    techniques: list[str] | None = None  # None = all
+
+
+@router.post("/simulate")
+async def run_simulation(req: SimulateRequest) -> dict[str, Any]:
+    """Run adversary simulation campaign."""
+    s = _get_state()
+    from artemis.redteam.simulator import AdversarySimulator
+
+    from artemis.core.events import bus
+    sim = AdversarySimulator(db=s.db, event_bus=bus)
+    campaign = await sim.run_campaign(req.techniques)
+
+    # Store on app state for history
+    if not hasattr(s, '_sim_campaigns'):
+        s._sim_campaigns = []
+    s._sim_campaigns.append((sim, campaign))
+
+    return sim.to_dict(campaign)
+
+
+@router.get("/simulate/techniques")
+async def list_techniques() -> list[dict]:
+    """List available simulation techniques."""
+    return [
+        {"id": "T1059.001", "name": "PowerShell Execution", "tactic": "Execution"},
+        {"id": "T1059.003", "name": "Windows Command Shell", "tactic": "Execution"},
+        {"id": "T1547.001", "name": "Registry Run Key Persistence", "tactic": "Persistence"},
+        {"id": "T1105", "name": "Ingress Tool Transfer", "tactic": "Command and Control"},
+        {"id": "T1046", "name": "Network Service Discovery", "tactic": "Discovery"},
+        {"id": "T1057", "name": "Process Discovery", "tactic": "Discovery"},
+        {"id": "T1082", "name": "System Information Discovery", "tactic": "Discovery"},
+        {"id": "T1083", "name": "File and Directory Discovery", "tactic": "Discovery"},
+        {"id": "T1070.004", "name": "Indicator Removal: File Deletion", "tactic": "Defense Evasion"},
+        {"id": "T1053.005", "name": "Scheduled Task", "tactic": "Persistence"},
+        {"id": "T1218.011", "name": "Rundll32 Proxy Execution", "tactic": "Defense Evasion"},
+        {"id": "T1003", "name": "Credential Access Indicator", "tactic": "Credential Access"},
+    ]
+
+
+@router.get("/simulate/history")
+async def sim_history() -> list[dict]:
+    s = _get_state()
+    if not hasattr(s, '_sim_campaigns'):
+        return []
+    return [sim.to_dict(camp) for sim, camp in s._sim_campaigns[-10:]]
+
+
 # ── Chat — Natural Language Interface ─────────────────────────────────
 
 class ChatRequest(BaseModel):

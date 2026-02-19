@@ -24,7 +24,7 @@ def _ctx(request: Request, **kwargs) -> dict:
 
     # Path-based: these are always ops
     path = request.url.path
-    ops_paths = ("/ops", "/guardian", "/hunt", "/events", "/generate", "/scan")
+    ops_paths = ("/ops", "/guardian", "/hunt", "/events", "/generate", "/scan", "/simulate")
     view_mode = "ops" if any(path.startswith(p) for p in ops_paths) else "simple"
     return {"request": request, "view_mode": view_mode, **kwargs}
 
@@ -78,6 +78,12 @@ async def generate(request: Request) -> HTMLResponse:
 @router.get("/settings", response_class=HTMLResponse)
 async def settings(request: Request) -> HTMLResponse:
     return templates.TemplateResponse("settings.html", _ctx(request, active="settings"))
+
+
+# Adversary Simulation
+@router.get("/simulate", response_class=HTMLResponse)
+async def simulate(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse("simulate.html", _ctx(request, active="simulate"))
 
 
 # Vulnerability Scanner
