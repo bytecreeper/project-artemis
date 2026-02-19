@@ -22,10 +22,10 @@ def _ctx(request: Request, **kwargs) -> dict:
     if mode_param in ("ops", "simple"):
         return {"request": request, "view_mode": mode_param, **kwargs}
 
-    # Path-based: these are always ops (Archer)
+    # Path-based: only exclusively-ops pages force Archer
     path = request.url.path
-    ops_paths = ("/ops", "/guardian", "/hunt", "/events", "/generate", "/scan", "/simulate")
-    view_mode = "ops" if any(path.startswith(p) for p in ops_paths) else "simple"
+    ops_only = ("/ops", "/dashboard", "/guardian", "/hunt", "/events", "/generate", "/simulate")
+    view_mode = "ops" if any(path.startswith(p) for p in ops_only) else "simple"
     return {"request": request, "view_mode": view_mode, **kwargs}
 
 

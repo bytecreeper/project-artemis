@@ -61,11 +61,11 @@
             <a href="/network" class="{% if active == 'network' %}active{% endif %}">
                 <span class="nav-icon">◎</span> Network
             </a>
-            <a href="/scan" class="{% if active == 'scan' %}active{% endif %}">
+            <a href="/scan?mode=simple" class="{% if active == 'scan' %}active{% endif %}">
                 <span class="nav-icon">⬡</span> Security Check
             </a>
             <div class="section-label">Reports</div>
-            <a href="/reports" class="{% if active == 'reports' %}active{% endif %}">
+            <a href="/reports?mode=simple" class="{% if active == 'reports' %}active{% endif %}">
                 <span class="nav-icon">▤</span> Reports
             </a>
             <a href="/settings" class="{% if active == 'settings' %}active{% endif %}">
