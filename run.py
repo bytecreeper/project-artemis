@@ -15,11 +15,12 @@ if __name__ == "__main__":
         )
 
     import uvicorn
+    dev_mode = "--reload" in sys.argv or os.environ.get("ARTEMIS_DEV") == "1"
     uvicorn.run(
         "artemis.web.app:app",
         host="127.0.0.1",
         port=8000,
         log_level="info",
-        reload=True,
-        reload_excludes=["tests/*", "data/*", "*.pyc"],
+        reload=dev_mode,
+        reload_excludes=["tests/*", "data/*", "*.pyc", ".git/*", "reports/*"],
     )
