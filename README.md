@@ -54,7 +54,34 @@ The centerpiece is a security score that reflects the actual state of the machin
 - Animated security score with real-time protection status
 - Activity feed with plain-language descriptions of system events
 - AI-narrated alerts that translate technical findings into clear explanations
+- Natural language chat interface — ask questions about your system in plain English
+- Vulnerability scanning with 10 built-in scanners
 - One-click access to security reports written for a general audience
+
+<p align="center">
+  <img src="docs/images/Artemis_Shield_Main.png" alt="Shield — Security Status Dashboard" width="700">
+</p>
+<p align="center"><em>Shield home — security score, protection status, and activity at a glance</em></p>
+
+<p align="center">
+  <img src="docs/images/Artemis_Shield_Alerts.png" alt="Shield — Plain Language Alerts" width="700">
+</p>
+<p align="center"><em>Alerts in plain language — what happened, when, and what to do about it</em></p>
+
+<p align="center">
+  <img src="docs/images/Ask_Artemis.png" alt="Ask Artemis — Natural Language Chat" width="700">
+</p>
+<p align="center"><em>Ask Artemis — query your security status in plain English</em></p>
+
+<p align="center">
+  <img src="docs/images/Artemis_Shield_Vuln_Scan.png" alt="Shield — Vulnerability Scanner" width="700">
+</p>
+<p align="center"><em>Security check — 10 scanners covering ports, credentials, policies, and configuration</em></p>
+
+<p align="center">
+  <img src="docs/images/Artemis_Shield_Reports.png" alt="Shield — Security Reports" width="700">
+</p>
+<p align="center"><em>Reports — automated security assessments with findings, scores, and remediation steps</em></p>
 
 **Where Shield is headed:**
 - Proactive notifications ("A new device joined your network 20 minutes ago")
@@ -86,7 +113,33 @@ Archer provides the raw data, the correlation chains, the investigation tools, a
 - Adversary simulation with 12 non-destructive MITRE ATT&CK techniques across 6 tactics
 - Remediation engine with verified actions (kill process, quarantine file, block IP) and rollback
 - Security score history with trend analysis over time via Chart.js dashboards
+- Detection rule generation from natural language descriptions (Sigma format)
 - Full HTML report generation with findings, evidence, and remediation steps
+
+<p align="center">
+  <img src="docs/images/Artemis_Archer_Main.png" alt="Archer — Operations Dashboard" width="700">
+</p>
+<p align="center"><em>Archer dashboard — event timeline, severity distribution, live feed, and alert status</em></p>
+
+<p align="center">
+  <img src="docs/images/Artemis_Archer_Guardian.png" alt="Archer — Guardian Real-Time Monitor" width="700">
+</p>
+<p align="center"><em>Guardian — real-time event stream with process activity and live statistics</em></p>
+
+<p align="center">
+  <img src="docs/images/Artemis_Archer_Hunt.png" alt="Archer — Threat Hunt Interface" width="700">
+</p>
+<p align="center"><em>Hunt — search, filter, and investigate events with AI-assisted threat analysis</em></p>
+
+<p align="center">
+  <img src="docs/images/Artemis_Archer_RedTeam.png" alt="Archer — Adversary Simulation" width="700">
+</p>
+<p align="center"><em>Red Team — 12 MITRE ATT&CK techniques for testing your defenses</em></p>
+
+<p align="center">
+  <img src="docs/images/Artemis_Archer_RuleGen.png" alt="Archer — Detection Rule Generator" width="700">
+</p>
+<p align="center"><em>Rule Generator — describe a threat in plain English, get a Sigma detection rule</em></p>
 
 **Where Archer is headed:**
 - Externalized YAML detection rules that can be updated without code changes
