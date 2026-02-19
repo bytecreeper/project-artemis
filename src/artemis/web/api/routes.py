@@ -339,6 +339,131 @@ async def event_stream(request: Request):
     return create_sse_response(request)
 
 
+# ── Vulnerability Scanner ──────────────────────────────────────────────
+
+class ScanRequest(BaseModel):
+    target: str = "localhost"  # IP or "localhost" or "network"
+    scanners: list[str] | None = None  # None = all
+
+
+@router.post("/scan")
+async def run_scan(req: ScanRequest) -> dict[str, Any]:
+    """Run vulnerability scanners against a target."""
+    s = _get_state()
+    from artemis.scanner.base import ScanEngine, ScanTarget
+    import artemis.scanner.plugins  # noqa — registers plugins
+
+    engine = ScanEngine()
+    engine.load_scanners(req.scanners)
+
+    if req.target == "network":
+        # Scan all discovered hosts
+        hosts = s.db.get_hosts()
+        findings = await engine.scan_network(hosts)
+    else:
+        host = "127.0.0.1" if req.target == "localhost" else req.target
+        # Get known ports for this host if available
+        known_ports = []
+        for h in s.db.get_hosts():
+            if h.get("ip") == host:
+                ports = h.get("open_ports", [])
+                if isinstance(ports, str):
+                    import json as _json
+                    try:
+                        ports = _json.loads(ports)
+                    except Exception:
+                        ports = []
+                known_ports = ports
+                break
+        target = ScanTarget(host=host, ports=known_ports)
+        findings = await engine.scan_target(target)
+
+    return {
+        "target": req.target,
+        "findings_count": len(findings),
+        "summary": engine.scan_summary,
+        "findings": [
+            {
+                "id": f.id, "scanner": f.scanner, "target": f.target,
+                "severity": f.severity.value, "category": f.category.value,
+                "title": f.title, "description": f.description,
+                "technical_detail": f.technical_detail,
+                "evidence": f.evidence, "remediation": f.remediation,
+                "cve": f.cve, "mitre_id": f.mitre_id,
+                "confidence": f.confidence,
+            }
+            for f in findings
+        ],
+    }
+
+
+@router.get("/scan/scanners")
+async def list_scanners() -> list[dict]:
+    """List available scanner plugins."""
+    from artemis.scanner.base import ScannerPlugin
+    import artemis.scanner.plugins  # noqa
+    return [
+        {"name": cls.name, "description": cls.description, "category": cls.category}
+        for cls in ScannerPlugin._registry
+    ]
+
+
+# ── AI Investigation ──────────────────────────────────────────────────
+
+class InvestigateRequest(BaseModel):
+    finding_id: str = ""
+    alert_id: str = ""
+
+
+@router.post("/investigate")
+async def investigate(req: InvestigateRequest) -> dict[str, Any]:
+    """Launch an AI-powered investigation of a finding or alert."""
+    s = _get_state()
+    from artemis.ai.investigator import InvestigationEngine
+    from artemis.core.threat_classifier import classifier
+
+    engine = InvestigationEngine(s.db, s.ai, classifier)
+
+    if req.finding_id:
+        # Find the finding
+        for f in classifier.findings:
+            if f.id == req.finding_id:
+                finding_data = {
+                    "id": f.id, "title": f.title, "description": f.description,
+                    "severity": f.severity.value, "category": f.category.value,
+                    "evidence": f.evidence, "mitre_id": f.mitre_id,
+                    "event_ids": f.event_ids,
+                }
+                inv = await engine.investigate_finding(finding_data)
+                return engine.to_dict(inv)
+        raise HTTPException(404, "Finding not found")
+
+    elif req.alert_id:
+        # Find the alert
+        alerts = s.db.get_open_alerts()
+        for a in alerts:
+            if a[0] == req.alert_id:
+                alert_data = {
+                    "id": a[0], "title": a[2], "description": a[3],
+                    "severity": a[4], "event_ids": a[5],
+                }
+                inv = await engine.investigate_alert(alert_data)
+                return engine.to_dict(inv)
+        raise HTTPException(404, "Alert not found")
+
+    else:
+        raise HTTPException(400, "Provide finding_id or alert_id")
+
+
+@router.get("/investigations")
+async def list_investigations() -> list[dict]:
+    """List recent investigations."""
+    s = _get_state()
+    if not hasattr(s, '_investigator'):
+        return []
+    return [s._investigator.to_dict(inv) for inv in s._investigator.investigations[-20:]]
+
+
 # ── Chat — Natural Language Interface ─────────────────────────────────
 
 class ChatRequest(BaseModel):

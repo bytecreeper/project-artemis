@@ -80,6 +80,12 @@ async def settings(request: Request) -> HTMLResponse:
     return templates.TemplateResponse("settings.html", {"request": request, "view_mode": view_mode, "active": "settings"})
 
 
+# Vulnerability Scanner
+@router.get("/scan", response_class=HTMLResponse)
+async def scan(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse("scan.html", _ctx(request, active="scan"))
+
+
 # Reports
 @router.get("/reports", response_class=HTMLResponse)
 async def reports(request: Request) -> HTMLResponse:
