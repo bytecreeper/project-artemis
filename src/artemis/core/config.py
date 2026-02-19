@@ -109,7 +109,16 @@ class Config:
                 d = raw
                 for p in parts[:-1]:
                     d = d.setdefault(p, {})
-                d[parts[-1]] = val
+                # Coerce booleans and numbers from env strings
+                if val.lower() in ("true", "1", "yes"):
+                    d[parts[-1]] = True
+                elif val.lower() in ("false", "0", "no"):
+                    d[parts[-1]] = False
+                else:
+                    try:
+                        d[parts[-1]] = int(val)
+                    except ValueError:
+                        d[parts[-1]] = val
 
         return cls._from_dict(raw)
 

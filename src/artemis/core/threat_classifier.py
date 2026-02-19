@@ -147,6 +147,7 @@ class ThreatClassifier:
     def __init__(self) -> None:
         self._findings: list[Finding] = []
         self._bus: EventBus | None = None
+        self._db = None
         self._max_findings = 500
 
     @property
@@ -191,8 +192,42 @@ class ThreatClassifier:
             return "POOR"
         return "CRITICAL"
 
+    def set_db(self, db) -> None:
+        """Set database reference for persistence."""
+        self._db = db
+
+    def load_from_db(self) -> None:
+        """Load existing findings from DuckDB on startup."""
+        if not self._db:
+            return
+        try:
+            rows = self._db.get_findings(active_only=False)
+            for row in rows:
+                try:
+                    f = Finding(
+                        id=row["id"], timestamp=row["timestamp"],
+                        category=FindingCategory(row["category"]),
+                        severity=FindingSeverity(row["severity"]),
+                        title=row["title"], description=row["description"],
+                        evidence=row.get("evidence", {}),
+                        confidence=row.get("confidence", 0.0),
+                        mitre_id=row.get("mitre_id", ""),
+                        mitre_tactic=row.get("mitre_tactic", ""),
+                        remediation_id=row.get("remediation_id", ""),
+                        event_ids=row.get("event_ids", []),
+                        dismissed=row.get("dismissed", False),
+                        resolved=row.get("resolved", False),
+                    )
+                    self._findings.append(f)
+                except (ValueError, KeyError):
+                    continue
+            logger.info("Loaded %d findings from database", len(self._findings))
+        except Exception as e:
+            logger.warning("Could not load findings from DB: %s", e)
+
     async def start(self, bus: EventBus) -> None:
         self._bus = bus
+        self.load_from_db()
         bus.subscribe(EventType.PROCESS_START, self._classify_process)
         bus.subscribe(EventType.PROCESS_SUSPICIOUS, self._classify_process)
         bus.subscribe(EventType.FILE_MODIFIED, self._classify_file_change)
@@ -206,6 +241,23 @@ class ThreatClassifier:
         self._findings.append(finding)
         if len(self._findings) > self._max_findings:
             self._findings = self._findings[-self._max_findings:]
+
+        # Persist to DuckDB
+        if self._db:
+            try:
+                self._db.upsert_finding({
+                    "id": finding.id, "timestamp": finding.timestamp,
+                    "category": finding.category.value, "severity": finding.severity.value,
+                    "title": finding.title, "description": finding.description,
+                    "evidence": finding.evidence, "confidence": finding.confidence,
+                    "mitre_id": finding.mitre_id, "mitre_tactic": finding.mitre_tactic,
+                    "remediation_id": finding.remediation_id,
+                    "event_ids": finding.event_ids,
+                    "dismissed": finding.dismissed, "resolved": finding.resolved,
+                })
+            except Exception as e:
+                logger.error("Failed to persist finding: %s", e)
+
         logger.warning("FINDING [%s] %s (confidence=%.0f%%): %s",
                        finding.severity.value.upper(), finding.title,
                        finding.confidence * 100, finding.description)

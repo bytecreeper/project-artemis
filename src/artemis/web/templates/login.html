@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artemis — Login</title>
+    <link rel="icon" href="/static/img/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --card: #12121a;
+            --border: #1e1e2e;
+            --amber: #f5a623;
+            --text: #e2e2e8;
+            --text-muted: #6b6b80;
+            --red: #ef4444;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .login-box img {
+            height: 80px;
+            margin-bottom: 24px;
+            opacity: 0.9;
+        }
+        .login-box h1 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .login-box p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 28px;
+            line-height: 1.5;
+        }
+        .login-box input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            outline: none;
+            margin-bottom: 16px;
+        }
+        .login-box input:focus {
+            border-color: var(--amber);
+        }
+        .login-box button {
+            width: 100%;
+            padding: 12px;
+            background: var(--amber);
+            border: none;
+            border-radius: 8px;
+            color: var(--bg);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+        }
+        .login-box button:hover { opacity: 0.9; }
+        .error {
+            color: var(--red);
+            font-size: 12px;
+            margin-bottom: 12px;
+            display: none;
+        }
+        .error.show { display: block; }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <img src="/static/img/favicon.png" alt="Artemis">
+        <h1>Project Artemis</h1>
+        <p>Enter your API token to access the dashboard.<br>Check your terminal or config/local.toml for the token.</p>
+        <div id="error" class="error">Invalid token. Please try again.</div>
+        <form onsubmit="return doLogin(event)">
+            <input type="password" id="token" placeholder="API Token" autofocus autocomplete="off">
+            <button type="submit">AUTHENTICATE</button>
+        </form>
+    </div>
+    <script>
+        function doLogin(e) {
+            e.preventDefault();
+            const token = document.getElementById('token').value.trim();
+            if (!token) return false;
+            // Verify token via API health check
+            fetch('/api/auth/verify', { headers: { 'Authorization': 'Bearer ' + token } })
+                .then(r => {
+                    if (r.ok) {
+                        // Set cookie and redirect
+                        document.cookie = `artemis_token=${token}; path=/; SameSite=Strict; max-age=86400`;
+                        window.location.href = '/';
+                    } else {
+                        document.getElementById('error').classList.add('show');
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('error').classList.add('show');
+                });
+            return false;
+        }
+    </script>
+</body>
+</html>

@@ -21,6 +21,12 @@ def _get_state():
 
 # ── Health / Stats ────────────────────────────────────────────────────
 
+@router.get("/auth/verify")
+async def auth_verify() -> dict[str, str]:
+    """Verify that the provided token is valid. If you can reach this, you're authenticated."""
+    return {"status": "ok"}
+
+
 @router.get("/health")
 async def health() -> dict[str, Any]:
     s = _get_state()
@@ -300,6 +306,13 @@ async def get_security_score() -> dict[str, Any]:
     }
 
 
+@router.get("/security-score/history")
+async def get_score_history(hours: int = 168) -> list[dict]:
+    """Get security score history (default: last 7 days)."""
+    s = _get_state()
+    return s.db.get_score_history(hours=hours)
+
+
 # ── Remediation ──────────────────────────────────────────────────────
 
 class KillProcessRequest(BaseModel):
@@ -343,9 +356,14 @@ async def remediate_block(req: BlockIPRequest) -> dict[str, Any]:
 @router.post("/findings/{finding_id}/dismiss")
 async def dismiss_finding(finding_id: str) -> dict[str, str]:
     from artemis.core.threat_classifier import classifier
+    s = _get_state()
     for f in classifier.findings:
         if f.id == finding_id:
             f.dismissed = True
+            try:
+                s.db.dismiss_finding(finding_id)
+            except Exception:
+                pass
             return {"status": "dismissed", "id": finding_id}
     raise HTTPException(404, "Finding not found")
 
@@ -406,23 +424,37 @@ async def run_scan(req: ScanRequest) -> dict[str, Any]:
         target = ScanTarget(host=host, ports=known_ports)
         findings = await engine.scan_target(target)
 
+    # Persist scan results to DB
+    finding_dicts = []
+    for f in findings:
+        fd = {
+            "id": f.id, "scanner": f.scanner, "target": f.target,
+            "severity": f.severity.value, "category": f.category.value,
+            "title": f.title, "description": f.description,
+            "technical_detail": f.technical_detail,
+            "evidence": f.evidence, "remediation": f.remediation,
+            "cve": f.cve, "mitre_id": f.mitre_id,
+            "confidence": f.confidence, "timestamp": f.timestamp,
+        }
+        finding_dicts.append(fd)
+        try:
+            s.db.save_scan_finding(fd)
+        except Exception:
+            pass
+
     return {
         "target": req.target,
         "findings_count": len(findings),
         "summary": engine.scan_summary,
-        "findings": [
-            {
-                "id": f.id, "scanner": f.scanner, "target": f.target,
-                "severity": f.severity.value, "category": f.category.value,
-                "title": f.title, "description": f.description,
-                "technical_detail": f.technical_detail,
-                "evidence": f.evidence, "remediation": f.remediation,
-                "cve": f.cve, "mitre_id": f.mitre_id,
-                "confidence": f.confidence,
-            }
-            for f in findings
-        ],
+        "findings": finding_dicts,
     }
+
+
+@router.get("/scan/history")
+async def scan_history(limit: int = 100) -> list[dict]:
+    """Get historical scan results."""
+    s = _get_state()
+    return s.db.get_scan_history(limit=limit)
 
 
 @router.get("/scan/scanners")
@@ -453,6 +485,7 @@ async def investigate(req: InvestigateRequest) -> dict[str, Any]:
 
     engine = InvestigationEngine(s.db, s.ai, classifier)
 
+    inv = None
     if req.finding_id:
         # Find the finding
         for f in classifier.findings:
@@ -464,11 +497,11 @@ async def investigate(req: InvestigateRequest) -> dict[str, Any]:
                     "event_ids": f.event_ids,
                 }
                 inv = await engine.investigate_finding(finding_data)
-                return engine.to_dict(inv)
-        raise HTTPException(404, "Finding not found")
+                break
+        if inv is None:
+            raise HTTPException(404, "Finding not found")
 
     elif req.alert_id:
-        # Find the alert
         alerts = s.db.get_open_alerts()
         for a in alerts:
             if a[0] == req.alert_id:
@@ -477,20 +510,26 @@ async def investigate(req: InvestigateRequest) -> dict[str, Any]:
                     "severity": a[4], "event_ids": a[5],
                 }
                 inv = await engine.investigate_alert(alert_data)
-                return engine.to_dict(inv)
-        raise HTTPException(404, "Alert not found")
-
+                break
+        if inv is None:
+            raise HTTPException(404, "Alert not found")
     else:
         raise HTTPException(400, "Provide finding_id or alert_id")
+
+    # Persist investigation to DB
+    result = engine.to_dict(inv)
+    try:
+        s.db.save_investigation(result)
+    except Exception:
+        pass
+    return result
 
 
 @router.get("/investigations")
 async def list_investigations() -> list[dict]:
-    """List recent investigations."""
+    """List recent investigations (from DB)."""
     s = _get_state()
-    if not hasattr(s, '_investigator'):
-        return []
-    return [s._investigator.to_dict(inv) for inv in s._investigator.investigations[-20:]]
+    return s.db.get_investigations(limit=20)
 
 
 # ── Adversary Simulation ──────────────────────────────────────────────

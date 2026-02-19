@@ -123,9 +123,10 @@ class PlainAlert:
 class AlertNarrator:
     """Listens for security events and produces plain-language alerts."""
 
-    def __init__(self, max_alerts: int = 500, ai_provider=None):
+    def __init__(self, max_alerts: int = 500, ai_provider=None, db=None):
         self._alerts: deque[PlainAlert] = deque(maxlen=max_alerts)
         self._ai = ai_provider
+        self._db = db
         self._bus: EventBus | None = None
         self._alert_count = 0
 
@@ -153,11 +154,40 @@ class AlertNarrator:
     async def stop(self) -> None:
         logger.info("Alert narrator stopped (%d alerts generated)", self._alert_count)
 
+    def load_from_db(self) -> None:
+        """Load existing plain alerts from DuckDB on startup."""
+        if not self._db:
+            return
+        try:
+            rows = self._db.get_plain_alerts(limit=500, active_only=False)
+            for row in rows:
+                sev = row.get("severity", 0)
+                sev_label, sev_icon = SEVERITY_LABELS.get(sev, ("Unknown", "?"))
+                alert = PlainAlert(
+                    id=row["id"], timestamp=row["timestamp"],
+                    severity=sev, severity_label=sev_label, severity_icon=sev_icon,
+                    headline=row["headline"], plain=row["plain"],
+                    action=row.get("action", ""), technical=row.get("technical", ""),
+                    event_type=row.get("event_type", ""),
+                    source="db", dismissed=row.get("dismissed", False),
+                )
+                self._alerts.append(alert)
+            logger.info("Loaded %d plain alerts from database", len(self._alerts))
+        except Exception as e:
+            logger.warning("Could not load plain alerts from DB: %s", e)
+
     async def _on_event(self, event: Event) -> None:
         """Transform a raw event into a plain-language alert."""
         alert = await self._narrate(event)
         self._alerts.appendleft(alert)
         self._alert_count += 1
+
+        # Persist to DB
+        if self._db:
+            try:
+                self._db.save_plain_alert(alert.to_dict())
+            except Exception as e:
+                logger.error("Failed to persist plain alert: %s", e)
 
         sev_label = alert.severity_label
         logger.info("Alert [%s] %s: %s", sev_label, alert.event_type, alert.headline)
@@ -307,6 +337,11 @@ class AlertNarrator:
         for a in self._alerts:
             if a.id == alert_id:
                 a.dismissed = True
+                if self._db:
+                    try:
+                        self._db.dismiss_plain_alert(alert_id)
+                    except Exception:
+                        pass
                 return True
         return False
 

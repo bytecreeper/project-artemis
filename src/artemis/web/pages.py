@@ -108,3 +108,18 @@ async def chat(request: Request) -> HTMLResponse:
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_redirect(request: Request) -> HTMLResponse:
     return templates.TemplateResponse("dashboard.html", _ctx(request, active="dashboard"))
+
+
+# Login
+@router.get("/login", response_class=HTMLResponse)
+async def login(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse("login.html", {"request": request})
+
+
+# Logout
+@router.get("/logout", response_class=HTMLResponse)
+async def logout(request: Request):
+    from fastapi.responses import RedirectResponse
+    response = RedirectResponse(url="/login", status_code=302)
+    response.delete_cookie("artemis_token")
+    return response

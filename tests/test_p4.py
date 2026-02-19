@@ -265,9 +265,11 @@ async def test_technical_detail_includes_mitre():
 def client():
     import sys, os
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+    # Disable auth for tests
+    os.environ["ARTEMIS_WEB__AUTH_ENABLED"] = "false"
     from artemis.web.app import create_app
-    from httpx import AsyncClient, ASGITransport
     app = create_app()
+    from httpx import AsyncClient, ASGITransport
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 

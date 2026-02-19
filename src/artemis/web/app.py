@@ -22,6 +22,8 @@ from artemis.network.scanner import NetworkScanner
 from artemis.web.sse import sse_manager
 from artemis.core.threat_classifier import classifier
 from artemis.ai.alert_narrator import AlertNarrator
+import asyncio as _asyncio
+from artemis.core.auth import ensure_token, AuthMiddleware
 
 logger = logging.getLogger("artemis.web")
 
@@ -45,7 +47,7 @@ class ArtemisApp:
             scan_range=config.network.scan_range,
             interval=config.network.scan_interval_seconds,
         )
-        self.narrator = AlertNarrator(ai_provider=self.ai)
+        self.narrator = AlertNarrator(ai_provider=self.ai, db=self.db)
         self.edr_plugins: list = []
         self.start_time = time.time()
 
@@ -60,6 +62,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     global state
 
     config = Config.load()
+
+    # Ensure auth token exists (generates on first run)
+    if config.web.auth_enabled:
+        token = ensure_token()
+        if not config.web.api_key:
+            config.web.api_key = token
+
     state = ArtemisApp(config)
 
     # Configure logging
@@ -103,18 +112,49 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if config.network.enabled:
         await state.network.start(bus)
 
-    # Start threat classifier
+    # Start threat classifier (with DB persistence)
+    classifier.set_db(state.db)
     await classifier.start(bus)
 
-    # Start plain-language alert narrator
+    # Start plain-language alert narrator (with DB persistence)
+    state.narrator.load_from_db()
     await state.narrator.start(bus)
 
     # Start SSE manager (real-time event push)
     await sse_manager.start(bus)
 
+    # Start periodic score recording (every 15 min)
+    async def _record_score_loop():
+        while True:
+            try:
+                await _asyncio.sleep(900)  # 15 min
+                score = classifier.security_score
+                label = classifier.score_label
+                findings = len(classifier.active_findings)
+                events = state.db.count_events_since(24)
+                state.db.record_score(score, label, findings, events)
+                logger.debug("Recorded score: %d (%s)", score, label)
+            except _asyncio.CancelledError:
+                break
+            except Exception:
+                logger.exception("Score recording error")
+
+    score_task = _asyncio.create_task(_record_score_loop(), name="score-recorder")
+
+    # Record initial score
+    try:
+        state.db.record_score(
+            classifier.security_score, classifier.score_label,
+            len(classifier.active_findings), state.db.count_events_since(24),
+        )
+    except Exception:
+        pass
+
     logger.info("Artemis v3.0.0 ready — all systems online")
 
     yield
+
+    score_task.cancel()
 
     # Shutdown
     logger.info("Shutting down...")
@@ -138,6 +178,12 @@ def create_app() -> FastAPI:
         description="AI-powered security operations platform",
         lifespan=lifespan,
     )
+
+    # Auth middleware — loads token from config
+    config = Config.load()
+    if config.web.auth_enabled:
+        token = config.web.api_key or ensure_token()
+        app.add_middleware(AuthMiddleware, token=token, enabled=True)
 
     # Static files
     if STATIC_DIR.exists():
