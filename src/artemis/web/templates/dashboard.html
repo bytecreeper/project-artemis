@@ -1,127 +1,162 @@
 {% extends "base.html" %}
 {% set active = "dashboard" %}
-{% block title %}Artemis — Dashboard{% endblock %}
+{% block title %}Artemis Archer — Operations Dashboard{% endblock %}
 
 {% block content %}
 <div x-data="dashboard()" x-init="init()">
-    <!-- Stats row -->
-    <div class="grid-4" style="margin-bottom: 24px;">
-        <div class="card stat">
-            <div class="value" x-text="stats.events_24h">0</div>
-            <div class="label">Events (24h)</div>
+
+    <!-- Top Stats Row -->
+    <div class="grid-4 stagger mb-24">
+        <div class="stat-card">
+            <div class="stat-value" x-text="stats.events_24h || 0"></div>
+            <div class="stat-label">Events (24h)</div>
         </div>
-        <div class="card stat">
-            <div class="value" x-text="stats.open_alerts">0</div>
-            <div class="label">Open Alerts</div>
+        <div class="stat-card">
+            <div class="stat-value" :style="(stats.open_alerts || 0) > 0 ? 'color: var(--red)' : ''" x-text="stats.open_alerts || 0"></div>
+            <div class="stat-label">Open Alerts</div>
         </div>
-        <div class="card stat">
-            <div class="value" x-text="stats.network_hosts">0</div>
-            <div class="label">Network Hosts</div>
+        <div class="stat-card">
+            <div class="stat-value" style="color: var(--blue);" x-text="stats.network_hosts || 0"></div>
+            <div class="stat-label">Network Hosts</div>
         </div>
-        <div class="card stat">
-            <div class="value" x-text="stats.edr_plugins">0</div>
-            <div class="label">EDR Plugins</div>
+        <div class="stat-card">
+            <div class="stat-value" style="color: var(--green);" x-text="stats.edr_plugins || 0"></div>
+            <div class="stat-label">EDR Modules</div>
         </div>
     </div>
 
-    <!-- Two column layout -->
-    <div class="grid-2">
-        <!-- Recent Alerts -->
+    <!-- Charts Row -->
+    <div class="grid-2 mb-24">
+        <!-- Event Timeline Chart -->
         <div class="card">
-            <h3>[!] Recent Alerts</h3>
-            <template x-if="alerts.length === 0">
-                <p style="color: var(--text-muted); padding: 12px 0;">No open alerts — systems nominal.</p>
-            </template>
-            <table x-show="alerts.length > 0">
-                <thead>
-                    <tr><th>Time</th><th>Title</th><th>Severity</th></tr>
-                </thead>
-                <tbody>
-                    <template x-for="alert in alerts" :key="alert.id">
-                        <tr>
-                            <td class="mono" x-text="formatTime(alert.timestamp)"></td>
-                            <td x-text="alert.title"></td>
-                            <td><span class="badge" :class="severityClass(alert.severity)" x-text="severityLabel(alert.severity)"></span></td>
-                        </tr>
-                    </template>
-                </tbody>
-            </table>
+            <h3>≡ Event Timeline (24h)</h3>
+            <div class="chart-container" style="height: 180px;">
+                <canvas id="timelineChart"></canvas>
+            </div>
         </div>
 
-        <!-- EDR Status -->
+        <!-- Severity Distribution -->
         <div class="card">
-            <h3>[#] EDR Status</h3>
-            <template x-if="Object.keys(edrStatus).length === 0">
-                <p style="color: var(--text-muted); padding: 12px 0;">No plugins loaded.</p>
-            </template>
-            <template x-for="(status, name) in edrStatus" :key="name">
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border);">
-                    <div>
-                        <span class="mono" x-text="name"></span>
-                        <template x-if="status.events_processed !== undefined">
-                            <span style="color: var(--text-muted); font-size: 11px; margin-left: 8px;" x-text="'(' + status.events_processed + ' events)'"></span>
-                        </template>
-                        <template x-if="status.events_emitted !== undefined">
-                            <span style="color: var(--text-muted); font-size: 11px; margin-left: 8px;" x-text="'(' + status.events_emitted + ' events)'"></span>
-                        </template>
-                        <template x-if="status.tracked_files !== undefined">
-                            <span style="color: var(--text-muted); font-size: 11px; margin-left: 8px;" x-text="'(' + status.tracked_files + ' files)'"></span>
-                        </template>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin-bottom: 0;">△ Severity Distribution</h3>
+            </div>
+            <div style="display: flex; align-items: center; gap: 24px;">
+                <div style="width: 140px; height: 140px; flex-shrink: 0;">
+                    <canvas id="severityChart"></canvas>
+                </div>
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                    <template x-for="s in severityBreakdown" :key="s.label">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0;" :style="`background: ${s.color}`"></div>
+                            <span style="font-size: 12px; color: var(--text-secondary); flex: 1;" x-text="s.label"></span>
+                            <span class="mono" style="font-size: 12px; font-weight: 600;" :style="`color: ${s.color}`" x-text="s.count"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Middle Row: Live Feed + Alerts -->
+    <div class="grid-2 mb-24">
+        <!-- Live Event Feed -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin-bottom: 0;"><span class="dot ok live" style="margin-right: 6px;"></span>Live Event Feed</h3>
+                <span class="mono" style="font-size: 10px; color: var(--text-muted);" x-text="events.length + ' events'"></span>
+            </div>
+            <div class="event-feed">
+                <template x-if="events.length === 0">
+                    <div style="color: var(--text-muted); padding: 20px; text-align: center; font-size: 12px;">Awaiting events...</div>
+                </template>
+                <template x-for="(ev, i) in events.slice(0, 25)" :key="ev.id || i">
+                    <div class="event-feed-item" :style="`animation-delay: ${i * 0.03}s`">
+                        <div class="severity-dot" :style="`background: ${sevColor(ev.severity)}`"></div>
+                        <span class="ev-time" x-text="formatTime(ev.timestamp)"></span>
+                        <span class="ev-type" x-text="ev.type ? ev.type.split('.').pop() : ''"></span>
+                        <span class="ev-detail" x-text="eventSummary(ev)"></span>
                     </div>
-                    <span>
-                        <span class="dot" :class="status.running ? 'ok' : 'err'"></span>
-                        <span x-text="status.running ? 'ACTIVE' : 'STOPPED'" style="font-size: 12px; font-family: var(--font-mono);"></span>
-                    </span>
+                </template>
+            </div>
+        </div>
+
+        <!-- Alerts -->
+        <div class="card">
+            <h3>△ Recent Alerts</h3>
+            <template x-if="alerts.length === 0">
+                <div style="color: var(--text-muted); padding: 20px; text-align: center; font-size: 12px;">
+                    <span style="font-size: 24px; display: block; margin-bottom: 8px; opacity: 0.5;">✓</span>
+                    No open alerts — systems nominal
                 </div>
             </template>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <template x-for="alert in alerts.slice(0, 8)" :key="alert.id">
+                    <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: var(--bg-elevated); border-radius: var(--radius-xs); transition: all 0.15s;" class="animate-in">
+                        <div class="severity-dot" style="margin-top: 5px;" :style="`background: ${sevColorNum(alert.severity)}`"></div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-size: 12px; font-weight: 600;" x-text="alert.title || alert.headline || 'Alert'"></div>
+                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="alert.description || alert.plain || ''"></div>
+                        </div>
+                        <span class="badge" :class="severityClass(alert.severity)" x-text="severityLabel(alert.severity)"></span>
+                    </div>
+                </template>
+            </div>
         </div>
     </div>
 
-    <!-- Recent Events -->
-    <div class="card" style="margin-top: 16px;">
-        <h3>[=] Recent Events</h3>
-        <template x-if="events.length === 0">
-            <p style="color: var(--text-muted); padding: 12px 0;">No events recorded yet.</p>
-        </template>
-        <table x-show="events.length > 0">
-            <thead>
-                <tr><th>Time</th><th>Type</th><th>Source</th><th>Severity</th><th>Details</th></tr>
-            </thead>
-            <tbody>
-                <template x-for="event in events.slice(0, 20)" :key="event.id">
-                    <tr>
-                        <td class="mono" x-text="formatTime(event.timestamp)"></td>
-                        <td class="mono" x-text="event.type.split('.').pop()"></td>
-                        <td x-text="event.source"></td>
-                        <td><span class="badge" :class="severityClass(event.severity)" x-text="severityLabel(event.severity)"></span></td>
-                        <td class="mono" style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="eventSummary(event)"></td>
-                    </tr>
+    <!-- Bottom Row: EDR Status + Network Hosts -->
+    <div class="grid-2">
+        <!-- EDR Status -->
+        <div class="card">
+            <h3>▣ EDR Modules</h3>
+            <template x-if="Object.keys(edrStatus).length === 0">
+                <div style="color: var(--text-muted); padding: 12px 0; font-size: 12px;">No modules loaded.</div>
+            </template>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <template x-for="(status, name) in edrStatus" :key="name">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--bg-elevated); border-radius: var(--radius-xs);">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span class="dot" :class="status.running ? 'ok' : 'err'"></span>
+                            <span class="mono" style="font-size: 12px; font-weight: 600;" x-text="name"></span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <template x-if="status.events_processed !== undefined">
+                                <span style="color: var(--text-muted); font-size: 10px; font-family: var(--font-mono);" x-text="status.events_processed + ' events'"></span>
+                            </template>
+                            <template x-if="status.events_emitted !== undefined">
+                                <span style="color: var(--text-muted); font-size: 10px; font-family: var(--font-mono);" x-text="status.events_emitted + ' emitted'"></span>
+                            </template>
+                            <template x-if="status.tracked_files !== undefined">
+                                <span style="color: var(--text-muted); font-size: 10px; font-family: var(--font-mono);" x-text="status.tracked_files + ' files'"></span>
+                            </template>
+                            <span class="badge" :class="status.running ? 'low' : 'critical'" x-text="status.running ? 'ACTIVE' : 'DOWN'"></span>
+                        </div>
+                    </div>
                 </template>
-            </tbody>
-        </table>
-    </div>
+            </div>
+        </div>
 
-    <!-- Network hosts -->
-    <div class="card" style="margin-top: 16px;">
-        <h3>[*] Network Hosts</h3>
-        <template x-if="hosts.length === 0">
-            <p style="color: var(--text-muted); padding: 12px 0;">Scanning network... no hosts discovered yet.</p>
-        </template>
-        <table x-show="hosts.length > 0">
-            <thead>
-                <tr><th>IP</th><th>MAC</th><th>Hostname</th><th>Open Ports</th></tr>
-            </thead>
-            <tbody>
+        <!-- Network Host Grid -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin-bottom: 0;">⬡ Network Hosts</h3>
+                <span class="mono" style="font-size: 10px; color: var(--text-muted);" x-text="hosts.length + ' discovered'"></span>
+            </div>
+            <template x-if="hosts.length === 0">
+                <div style="color: var(--text-muted); padding: 12px 0; font-size: 12px;">Scanning network...</div>
+            </template>
+            <div class="host-grid">
                 <template x-for="host in hosts" :key="host.ip">
-                    <tr>
-                        <td class="mono" x-text="host.ip"></td>
-                        <td class="mono" x-text="host.mac || '-'"></td>
-                        <td x-text="host.hostname || '-'"></td>
-                        <td class="mono" x-text="formatPorts(host.open_ports)"></td>
-                    </tr>
+                    <div class="host-tile">
+                        <div style="margin-bottom: 4px;">
+                            <span class="dot ok" style="width: 5px; height: 5px;"></span>
+                        </div>
+                        <div class="host-ip" x-text="host.ip"></div>
+                        <div style="font-size: 9px; color: var(--text-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="host.hostname || host.mac || '—'"></div>
+                    </div>
                 </template>
-            </tbody>
-        </table>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -135,42 +170,159 @@ function dashboard() {
         edrStatus: {},
         events: [],
         hosts: [],
+        severityBreakdown: [],
+        timelineChart: null,
+        severityChart: null,
 
         async init() {
             await this.refresh();
-            // Auto-refresh every 5 seconds
+            this.buildCharts();
             setInterval(() => this.refresh(), 5000);
         },
 
         async refresh() {
             try {
-                const [statsResp, alertsResp, hostsResp, edrResp, eventsResp] = await Promise.allSettled([
+                const [statsR, alertsR, hostsR, edrR, eventsR] = await Promise.allSettled([
                     fetch('/api/stats').then(r => r.json()),
                     fetch('/api/alerts').then(r => r.json()),
                     fetch('/api/network/hosts').then(r => r.json()),
                     fetch('/api/edr/status').then(r => r.json()),
-                    fetch('/api/events?limit=20').then(r => r.json()),
+                    fetch('/api/events?limit=25').then(r => r.json()),
                 ]);
 
-                if (statsResp.status === 'fulfilled') this.stats = statsResp.value;
-                if (alertsResp.status === 'fulfilled') this.alerts = alertsResp.value;
-                if (hostsResp.status === 'fulfilled') {
-                    this.hosts = hostsResp.value;
+                if (statsR.status === 'fulfilled') this.stats = statsR.value;
+                if (alertsR.status === 'fulfilled') this.alerts = alertsR.value;
+                if (hostsR.status === 'fulfilled') {
+                    this.hosts = hostsR.value;
                     this.stats.network_hosts = this.hosts.length;
                 }
-                if (edrResp.status === 'fulfilled') this.edrStatus = edrResp.value;
-                if (eventsResp.status === 'fulfilled') this.events = eventsResp.value;
+                if (edrR.status === 'fulfilled') this.edrStatus = edrR.value;
+                if (eventsR.status === 'fulfilled') {
+                    this.events = eventsR.value;
+                    this.updateCharts();
+                }
             } catch (e) {
-                console.error('Dashboard refresh failed:', e);
+                console.error('Refresh failed:', e);
             }
+        },
+
+        buildCharts() {
+            // Timeline chart
+            const tlCtx = document.getElementById('timelineChart');
+            if (tlCtx) {
+                this.timelineChart = new Chart(tlCtx, {
+                    type: 'line',
+                    data: {
+                        labels: this.getTimeLabels(),
+                        datasets: [{
+                            data: this.getTimeData(),
+                            borderColor: '#f5a623',
+                            backgroundColor: 'rgba(245, 166, 35, 0.08)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            pointHoverBackgroundColor: '#f5a623',
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { intersect: false, mode: 'index' },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } },
+                            y: { grid: { color: '#1e1e2a' }, beginAtZero: true, ticks: { maxTicksLimit: 5 } },
+                        },
+                        plugins: { tooltip: { backgroundColor: '#12121a', borderColor: '#2a2a38', borderWidth: 1 } },
+                    }
+                });
+            }
+
+            // Severity donut
+            const sevCtx = document.getElementById('severityChart');
+            if (sevCtx) {
+                this.severityChart = new Chart(sevCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Low', 'Medium', 'High', 'Critical'],
+                        datasets: [{
+                            data: [1, 0, 0, 0],
+                            backgroundColor: ['#22c55e', '#eab308', '#f5a623', '#ef4444'],
+                            borderWidth: 0,
+                            hoverOffset: 4,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        cutout: '65%',
+                        plugins: { tooltip: { backgroundColor: '#12121a', borderColor: '#2a2a38', borderWidth: 1 } },
+                    }
+                });
+            }
+        },
+
+        updateCharts() {
+            // Severity counts from events
+            const counts = [0, 0, 0, 0]; // low, med, high, crit
+            this.events.forEach(ev => {
+                const s = ev.severity || 1;
+                if (s <= 1) counts[0]++;
+                else if (s === 2) counts[0]++;
+                else if (s === 3) counts[1]++;
+                else if (s === 4) counts[2]++;
+                else counts[3]++;
+            });
+
+            this.severityBreakdown = [
+                { label: 'Low', count: counts[0], color: '#22c55e' },
+                { label: 'Medium', count: counts[1], color: '#eab308' },
+                { label: 'High', count: counts[2], color: '#f5a623' },
+                { label: 'Critical', count: counts[3], color: '#ef4444' },
+            ];
+
+            if (this.severityChart) {
+                this.severityChart.data.datasets[0].data = counts.map(c => c || 0);
+                // Ensure at least one value for donut to render
+                if (counts.every(c => c === 0)) this.severityChart.data.datasets[0].data = [1, 0, 0, 0];
+                this.severityChart.update('none');
+            }
+
+            if (this.timelineChart) {
+                this.timelineChart.data.labels = this.getTimeLabels();
+                this.timelineChart.data.datasets[0].data = this.getTimeData();
+                this.timelineChart.update('none');
+            }
+        },
+
+        getTimeLabels() {
+            const labels = [];
+            for (let i = 23; i >= 0; i--) {
+                const d = new Date(Date.now() - i * 3600000);
+                labels.push(d.getHours().toString().padStart(2, '0') + ':00');
+            }
+            return labels;
+        },
+
+        getTimeData() {
+            const buckets = new Array(24).fill(0);
+            const now = Date.now();
+            this.events.forEach(ev => {
+                const ts = new Date(ev.timestamp).getTime();
+                const hoursAgo = Math.floor((now - ts) / 3600000);
+                if (hoursAgo >= 0 && hoursAgo < 24) {
+                    buckets[23 - hoursAgo]++;
+                }
+            });
+            return buckets;
         },
 
         formatTime(ts) {
             if (!ts) return '-';
             try {
                 const d = new Date(ts);
-                return d.toLocaleTimeString('en-US', { hour12: false }) + ' ' +
-                       d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
             } catch { return ts; }
         },
 
@@ -194,12 +346,17 @@ function dashboard() {
             return JSON.stringify(d).substring(0, 80);
         },
 
-        severityClass(s) {
-            return ['low', 'low', 'medium', 'high', 'critical'][s] || 'low';
+        sevColor(s) {
+            return ['#22c55e','#22c55e','#eab308','#f5a623','#ef4444'][s] || '#22c55e';
         },
-
+        sevColorNum(s) {
+            return ['#22c55e','#22c55e','#eab308','#f5a623','#ef4444'][s] || '#22c55e';
+        },
+        severityClass(s) {
+            return ['low','low','medium','high','critical'][s] || 'low';
+        },
         severityLabel(s) {
-            return ['INFO', 'LOW', 'MED', 'HIGH', 'CRIT'][s] || 'INFO';
+            return ['INFO','LOW','MED','HIGH','CRIT'][s] || 'INFO';
         },
     };
 }

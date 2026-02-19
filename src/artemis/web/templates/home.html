@@ -1,101 +1,163 @@
 {% extends "base.html" %}
-{% block title %}Security Status — Artemis{% endblock %}
+{% block title %}Security Status — Artemis Shield{% endblock %}
 
 {% block content %}
-<div x-data="homeApp()" x-init="init()" style="padding: 24px;">
+<div x-data="homeApp()" x-init="init()">
 
-    <!-- Security Score Hero -->
-    <div style="text-align: center; margin-bottom: 32px;">
-        <div :style="`width:140px;height:140px;border-radius:50%;border:4px solid ${scoreColor};margin:0 auto 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;`">
-            <div :style="`font-size:42px;font-weight:800;font-family:var(--font-mono);color:${scoreColor};`" x-text="score"></div>
-            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;" x-text="label"></div>
+    <!-- Hero Section: Security Score Orb -->
+    <div style="text-align: center; margin-bottom: 40px; padding-top: 8px;">
+        <div class="shield-orb" :style="`border-color: ${scoreColor}; background: radial-gradient(circle at 40% 40%, ${scoreColor}15, transparent 70%);`">
+            <div class="score-num" :style="`color: ${scoreColor};`" x-text="score"></div>
+            <div class="score-label" x-text="label"></div>
         </div>
-        <p style="color: var(--text-muted); font-size: 14px; max-width: 400px; margin: 0 auto;" x-text="statusMessage"></p>
+        <div style="margin-top: 20px;">
+            <div style="font-size: 18px; font-weight: 700; color: var(--text-primary);" x-text="headline"></div>
+            <div style="font-size: 13px; color: var(--text-secondary); margin-top: 6px; max-width: 440px; margin-left: auto; margin-right: auto;" x-text="statusMessage"></div>
+        </div>
     </div>
 
-    <!-- Quick Stats -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px;">
+    <!-- Quick Stats with animated counters -->
+    <div class="grid-4 stagger mb-32">
         <div class="stat-card">
-            <div class="stat-value" x-text="stats.events_24h">—</div>
-            <div class="stat-label">Events (24h)</div>
+            <div class="stat-value" style="color: var(--green);" x-text="stats.events_24h || 0"></div>
+            <div class="stat-label">Events Monitored</div>
+            <div style="margin-top: 10px; height: 3px; border-radius: 2px; background: var(--border); overflow: hidden;">
+                <div style="height: 100%; border-radius: 2px; background: var(--green); transition: width 1s ease;" :style="`width: ${Math.min(100, (stats.events_24h || 0) / 10)}%`"></div>
+            </div>
         </div>
         <div class="stat-card">
-            <div class="stat-value" :style="stats.open_alerts > 0 ? 'color:#ff3333' : ''" x-text="stats.open_alerts">—</div>
-            <div class="stat-label">Open Alerts</div>
+            <div class="stat-value" :style="(stats.open_alerts || 0) > 0 ? 'color: var(--red)' : 'color: var(--green)'" x-text="stats.open_alerts || 0"></div>
+            <div class="stat-label">Active Alerts</div>
+            <div style="margin-top: 10px; height: 3px; border-radius: 2px; background: var(--border); overflow: hidden;">
+                <div style="height: 100%; border-radius: 2px; transition: width 1s ease;" :style="`width: ${(stats.open_alerts || 0) > 0 ? '100' : '0'}%; background: ${(stats.open_alerts || 0) > 0 ? 'var(--red)' : 'var(--green)'}`"></div>
+            </div>
         </div>
         <div class="stat-card">
-            <div class="stat-value" x-text="stats.network_hosts">—</div>
+            <div class="stat-value" style="color: var(--blue);" x-text="stats.network_hosts || 0"></div>
             <div class="stat-label">Network Devices</div>
+            <div style="margin-top: 10px; height: 3px; border-radius: 2px; background: var(--border); overflow: hidden;">
+                <div style="height: 100%; border-radius: 2px; background: var(--blue); transition: width 1s ease;" :style="`width: ${Math.min(100, (stats.network_hosts || 0) * 8)}%`"></div>
+            </div>
         </div>
         <div class="stat-card">
-            <div class="stat-value" :style="findings.length > 0 ? 'color:#ffbf00' : 'color:#00ff41'" x-text="findings.length">—</div>
-            <div class="stat-label">Active Findings</div>
+            <div class="stat-value" :style="findings.length > 0 ? 'color: var(--amber)' : 'color: var(--green)'" x-text="findings.length"></div>
+            <div class="stat-label">Findings</div>
+            <div style="margin-top: 10px; height: 3px; border-radius: 2px; background: var(--border); overflow: hidden;">
+                <div style="height: 100%; border-radius: 2px; transition: width 1s ease;" :style="`width: ${findings.length > 0 ? Math.min(100, findings.length * 15) : 0}%; background: ${findings.length > 0 ? 'var(--amber)' : 'var(--green)'}`"></div>
+            </div>
         </div>
     </div>
 
-    <!-- Findings List -->
-    <template x-if="findings.length > 0">
-        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-            <h3 style="font-family: var(--font-mono); color: var(--amber); font-size: 14px; margin: 0 0 16px;">[!] SECURITY FINDINGS</h3>
-            <template x-for="f in findings" :key="f.id">
-                <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border);">
-                    <span :style="`background:${sevColor(f.severity)};color:#000;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700;text-transform:uppercase;flex-shrink:0;margin-top:2px;`" x-text="f.severity"></span>
-                    <div style="flex:1;">
-                        <div style="font-weight: 600;" x-text="f.title"></div>
-                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" x-text="f.description"></div>
-                        <div x-show="f.mitre_id" style="font-size: 11px; color: var(--amber); margin-top: 4px; font-family: var(--font-mono);" x-text="f.mitre_id"></div>
+    <div class="grid-2" style="gap: 20px;">
+        <!-- Left column -->
+        <div>
+            <!-- Protection Status -->
+            <div class="card" style="margin-bottom: 20px;">
+                <h3>◈ Protection Status</h3>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span class="dot ok"></span>
+                            <span>Real-Time Monitoring</span>
+                        </div>
+                        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--green);">ACTIVE</span>
                     </div>
-                    <button @click="dismissFinding(f.id)" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;font-family:var(--font-mono);" title="Dismiss">DISMISS</button>
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span class="dot" :class="(stats.edr_plugins || 0) > 0 ? 'ok' : 'warn'"></span>
+                            <span>EDR Protection</span>
+                        </div>
+                        <span class="mono" style="font-size: 11px;" :style="(stats.edr_plugins || 0) > 0 ? 'color:var(--green)' : 'color:var(--amber)'" x-text="(stats.edr_plugins || 0) + ' modules'"></span>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span class="dot" :class="(stats.network_hosts || 0) > 0 ? 'ok' : 'warn'"></span>
+                            <span>Network Scanner</span>
+                        </div>
+                        <span class="mono" style="font-size: 11px; color: var(--green);">SCANNING</span>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span class="dot ok"></span>
+                            <span>File Integrity Monitor</span>
+                        </div>
+                        <span class="mono" style="font-size: 11px; color: var(--green);">WATCHING</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <h3>◇ Quick Actions</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <a href="/chat" class="btn" style="justify-content: center; text-decoration: none; width: 100%;">
+                        <span style="font-size: 16px;">◇</span> Ask Artemis a Question
+                    </a>
+                    <a href="/scan" class="btn" style="justify-content: center; text-decoration: none; width: 100%;">
+                        <span style="font-size: 16px;">⬡</span> Run Security Check
+                    </a>
+                    <a href="/reports" class="btn" style="justify-content: center; text-decoration: none; width: 100%;">
+                        <span style="font-size: 16px;">▤</span> Generate Report
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right column -->
+        <div>
+            <!-- Findings -->
+            <template x-if="findings.length > 0">
+                <div class="card" style="margin-bottom: 20px;">
+                    <h3>△ Security Findings</h3>
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <template x-for="f in findings" :key="f.id">
+                            <div class="activity-item" style="border-bottom: 1px solid var(--border);">
+                                <div class="activity-dot" :class="f.severity === 'critical' || f.severity === 'high' ? 'red' : f.severity === 'medium' ? 'amber' : 'green'"></div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-weight: 600; font-size: 13px;" x-text="f.title"></div>
+                                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="f.description"></div>
+                                    <div x-show="f.mitre_id" style="font-size: 10px; color: var(--amber); margin-top: 4px; font-family: var(--font-mono);" x-text="f.mitre_id"></div>
+                                </div>
+                                <button @click="dismissFinding(f.id)" class="btn" style="padding: 4px 12px; font-size: 10px; flex-shrink: 0;">DISMISS</button>
+                            </div>
+                        </template>
+                    </div>
                 </div>
             </template>
-        </div>
-    </template>
 
-    <!-- All Clear Message -->
-    <template x-if="loaded && findings.length === 0 && stats.open_alerts === 0">
-        <div style="text-align: center; padding: 40px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;">
-            <div style="font-size: 48px; margin-bottom: 12px; color: #00ff41;">&#10003;</div>
-            <h3 style="color: #00ff41; margin: 0 0 8px;">All Clear</h3>
-            <p style="color: var(--text-muted); font-size: 14px;">No security issues detected. Your system is being actively monitored.</p>
-        </div>
-    </template>
+            <!-- All Clear State -->
+            <template x-if="loaded && findings.length === 0 && (stats.open_alerts || 0) === 0">
+                <div class="card-glass" style="text-align: center; padding: 48px 24px; margin-bottom: 20px;">
+                    <div style="font-size: 56px; margin-bottom: 16px; opacity: 0.9;">✓</div>
+                    <div style="font-size: 20px; font-weight: 700; color: var(--green); margin-bottom: 8px;">All Clear</div>
+                    <div style="color: var(--text-secondary); font-size: 13px;">No security issues detected. Your system is being actively protected.</div>
+                </div>
+            </template>
 
-    <!-- Quick Actions -->
-    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px;">
-        <a href="/chat" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);text-decoration:none;font-family:var(--font-mono);font-size:13px;">
-            [?] Ask Artemis
-        </a>
-        <a href="/reports" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);text-decoration:none;font-family:var(--font-mono);font-size:13px;">
-            [R] Generate Report
-        </a>
-        <a href="/alerts" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);text-decoration:none;font-family:var(--font-mono);font-size:13px;">
-            [!] View Alerts
-        </a>
+            <!-- Recent Activity -->
+            <div class="card">
+                <h3>≡ Recent Activity</h3>
+                <div class="activity-feed">
+                    <template x-if="plainAlerts.length === 0">
+                        <div style="color: var(--text-muted); padding: 20px; text-align: center; font-size: 13px;">
+                            No recent activity. Your system is quiet.
+                        </div>
+                    </template>
+                    <template x-for="(a, i) in plainAlerts.slice(0, 8)" :key="a.id">
+                        <div class="activity-item">
+                            <div class="activity-dot" :class="a.severity >= 4 ? 'red' : a.severity >= 3 ? 'amber' : 'green'"></div>
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-size: 13px; font-weight: 500;" x-text="a.headline"></div>
+                                <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;" x-text="a.plain"></div>
+                            </div>
+                            <div style="font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); flex-shrink: 0;" x-text="timeAgo(a.timestamp)"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
-
-<style>
-    .stat-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 20px;
-        text-align: center;
-    }
-    .stat-value {
-        font-size: 28px;
-        font-weight: 800;
-        font-family: var(--font-mono);
-        color: var(--amber);
-    }
-    .stat-label {
-        font-size: 12px;
-        color: var(--text-muted);
-        margin-top: 4px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-</style>
 {% endblock %}
 
 {% block scripts %}
@@ -104,15 +166,19 @@ function homeApp() {
     return {
         score: '—',
         label: '...',
-        scoreColor: '#888',
-        statusMessage: 'Loading...',
+        headline: '',
+        scoreColor: '#50506a',
+        statusMessage: 'Initializing protection...',
         stats: { events_24h: 0, open_alerts: 0, network_hosts: 0, edr_plugins: 0 },
         findings: [],
+        plainAlerts: [],
         loaded: false,
 
         async init() {
-            await Promise.all([this.loadScore(), this.loadStats(), this.loadFindings()]);
+            await Promise.all([this.loadScore(), this.loadStats(), this.loadFindings(), this.loadActivity()]);
             this.loaded = true;
+            setInterval(() => this.loadActivity(), 15000);
+            setInterval(() => { this.loadScore(); this.loadStats(); }, 30000);
         },
 
         async loadScore() {
@@ -121,16 +187,21 @@ function homeApp() {
                 const d = await r.json();
                 this.score = d.score;
                 this.label = d.label;
-                this.scoreColor = d.score >= 80 ? '#00ff41' : d.score >= 50 ? '#ffbf00' : '#ff3333';
+                this.scoreColor = d.score >= 80 ? '#22c55e' : d.score >= 50 ? '#f5a623' : '#ef4444';
 
                 if (d.score >= 80 && d.total_findings === 0) {
-                    this.statusMessage = 'Your system is being monitored. No issues found.';
+                    this.headline = 'Your System Is Protected';
+                    this.statusMessage = 'All security modules are active and monitoring. No threats detected.';
                 } else if (d.score >= 50) {
-                    this.statusMessage = 'Some issues need attention. Review findings below.';
+                    this.headline = 'Attention Needed';
+                    this.statusMessage = 'Some security issues were found. Review the findings below to improve your protection.';
                 } else {
-                    this.statusMessage = 'Immediate attention required. Review findings below.';
+                    this.headline = 'Action Required';
+                    this.statusMessage = 'Critical security issues detected. Please review and address the findings immediately.';
                 }
-            } catch(e) { this.statusMessage = 'Unable to load security status.'; }
+            } catch(e) {
+                this.statusMessage = 'Connecting to security engine...';
+            }
         },
 
         async loadStats() {
@@ -148,6 +219,13 @@ function homeApp() {
             } catch(e) {}
         },
 
+        async loadActivity() {
+            try {
+                const r = await fetch('/api/alerts/plain?limit=10');
+                this.plainAlerts = await r.json();
+            } catch(e) {}
+        },
+
         async dismissFinding(id) {
             try {
                 await fetch(`/api/findings/${id}/dismiss`, { method: 'POST' });
@@ -156,9 +234,13 @@ function homeApp() {
             } catch(e) {}
         },
 
-        sevColor(sev) {
-            return { critical: '#ff3333', high: '#ff6633', medium: '#ffbf00', low: '#66ccff', info: '#888' }[sev] || '#888';
-        }
+        timeAgo(ts) {
+            const secs = Math.floor(Date.now() / 1000 - ts);
+            if (secs < 60) return 'now';
+            if (secs < 3600) return Math.floor(secs / 60) + 'm';
+            if (secs < 86400) return Math.floor(secs / 3600) + 'h';
+            return Math.floor(secs / 86400) + 'd';
+        },
     };
 }
 </script>

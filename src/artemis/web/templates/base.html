@@ -4,52 +4,118 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Artemis{% endblock %}</title>
+    <link rel="icon" type="image/png" href="/static/img/favicon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/img/favicon_32.png">
+    <link rel="apple-touch-icon" href="/static/img/icon_192.png">
     <link rel="stylesheet" href="/static/css/artemis.css">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <script defer src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     {% block head %}{% endblock %}
 </head>
 <body>
     <div class="app">
         <!-- Header -->
         <header class="header">
-            <span class="logo">[ARTEMIS]</span>
-            <span style="color: var(--text-muted); font-size: 12px;">v3.0.0</span>
-            <div class="view-toggle" style="margin-left: 24px; display: flex; gap: 2px;">
-                <a href="/" class="toggle-btn" style="padding: 4px 12px; font-size: 11px; border-radius: 4px 0 0 4px; border: 1px solid var(--border); text-decoration: none; font-family: var(--font-mono); {% if view_mode == 'simple' %}background: var(--amber); color: var(--bg-primary); border-color: var(--amber);{% else %}color: var(--text-muted); background: var(--bg-card);{% endif %}">SIMPLE</a>
-                <a href="/ops" class="toggle-btn" style="padding: 4px 12px; font-size: 11px; border-radius: 0 4px 4px 0; border: 1px solid var(--border); text-decoration: none; font-family: var(--font-mono); {% if view_mode == 'ops' %}background: var(--amber); color: var(--bg-primary); border-color: var(--amber);{% else %}color: var(--text-muted); background: var(--bg-card);{% endif %}">OPS</a>
+            <img src="/static/img/favicon.png" class="logo-img" alt="Artemis">
+            <span class="logo-text">Artemis</span>
+            <span class="version">v3.0</span>
+
+            <div class="mode-toggle">
+                <a href="/" class="{% if view_mode == 'simple' %}active-mode{% endif %}">
+                    <img src="/static/img/logo_shield_sm.png" class="mode-icon" alt="">
+                    SHIELD
+                </a>
+                <a href="/ops" class="{% if view_mode == 'ops' %}active-mode{% endif %}">
+                    <img src="/static/img/logo_archer_sm.png" class="mode-icon" alt="">
+                    ARCHER
+                </a>
             </div>
+
             <div class="status">
-                <span><span class="dot ok live"></span>ONLINE</span>
-                <span id="clock" class="mono"></span>
+                <div class="status-pill">
+                    <span class="dot ok live"></span>
+                    PROTECTED
+                </div>
+                <span id="clock" class="mono" style="color: var(--text-muted); font-size: 11px;"></span>
             </div>
         </header>
 
         <!-- Sidebar -->
         <nav class="sidebar">
             {% if view_mode == 'simple' %}
-            <a href="/" class="{% if active == 'home' %}active{% endif %}">[S] Security Status</a>
-            <a href="/chat" class="{% if active == 'chat' %}active{% endif %}">[?] Ask Artemis</a>
-            <div class="section-label">Quick Access</div>
-            <a href="/alerts" class="{% if active == 'alerts' %}active{% endif %}">[!] Alerts</a>
-            <a href="/network" class="{% if active == 'network' %}active{% endif %}">[N] Network</a>
-            <a href="/reports" class="{% if active == 'reports' %}active{% endif %}">[R] Reports</a>
-            <a href="/settings" class="{% if active == 'settings' %}active{% endif %}">[.] Settings</a>
+            <div class="sidebar-logo">
+                <img src="/static/img/logo_shield.png" alt="Artemis Shield">
+                <div class="mode-label">Protection Mode</div>
+            </div>
+            <a href="/" class="{% if active == 'home' %}active{% endif %}">
+                <span class="nav-icon">◈</span> Security Status
+            </a>
+            <a href="/chat" class="{% if active == 'chat' %}active{% endif %}">
+                <span class="nav-icon">◇</span> Ask Artemis
+            </a>
+            <div class="section-label">Monitor</div>
+            <a href="/alerts" class="{% if active == 'alerts' %}active{% endif %}">
+                <span class="nav-icon">△</span> Alerts
+            </a>
+            <a href="/network" class="{% if active == 'network' %}active{% endif %}">
+                <span class="nav-icon">◎</span> Network
+            </a>
+            <a href="/scan" class="{% if active == 'scan' %}active{% endif %}">
+                <span class="nav-icon">⬡</span> Security Check
+            </a>
+            <div class="section-label">Reports</div>
+            <a href="/reports" class="{% if active == 'reports' %}active{% endif %}">
+                <span class="nav-icon">▤</span> Reports
+            </a>
+            <a href="/settings" class="{% if active == 'settings' %}active{% endif %}">
+                <span class="nav-icon">⚙</span> Settings
+            </a>
             {% else %}
+            <div class="sidebar-logo">
+                <img src="/static/img/logo_archer.png" alt="Artemis Archer">
+                <div class="mode-label">Operations Mode</div>
+            </div>
             <div class="section-label">Operations</div>
-            <a href="/ops" class="{% if active == 'dashboard' %}active{% endif %}">[>] Dashboard</a>
-            <a href="/guardian" class="{% if active == 'guardian' %}active{% endif %}">[#] Guardian</a>
-            <a href="/hunt" class="{% if active == 'hunt' %}active{% endif %}">[~] Hunt</a>
+            <a href="/ops" class="{% if active == 'dashboard' %}active{% endif %}">
+                <span class="nav-icon">◈</span> Dashboard
+            </a>
+            <a href="/guardian" class="{% if active == 'guardian' %}active{% endif %}">
+                <span class="nav-icon">▣</span> Guardian
+            </a>
+            <a href="/hunt" class="{% if active == 'hunt' %}active{% endif %}">
+                <span class="nav-icon">◎</span> Hunt
+            </a>
             <div class="section-label">Intel</div>
-            <a href="/alerts?mode=ops" class="{% if active == 'alerts' %}active{% endif %}">[!] Alerts</a>
-            <a href="/network?mode=ops" class="{% if active == 'network' %}active{% endif %}">[N] Network</a>
-            <a href="/events" class="{% if active == 'events' %}active{% endif %}">[=] Events</a>
+            <a href="/alerts?mode=ops" class="{% if active == 'alerts' %}active{% endif %}">
+                <span class="nav-icon">△</span> Alerts
+            </a>
+            <a href="/network?mode=ops" class="{% if active == 'network' %}active{% endif %}">
+                <span class="nav-icon">⬡</span> Network
+            </a>
+            <a href="/events" class="{% if active == 'events' %}active{% endif %}">
+                <span class="nav-icon">≡</span> Events
+            </a>
             <div class="section-label">Tools</div>
-            <a href="/scan" class="{% if active == 'scan' %}active{% endif %}">[V] Vuln Scan</a>
-            <a href="/simulate" class="{% if active == 'simulate' %}active{% endif %}">[X] Red Team</a>
-            <a href="/generate" class="{% if active == 'generate' %}active{% endif %}">[+] Rule Gen</a>
-            <a href="/reports?mode=ops" class="{% if active == 'reports' %}active{% endif %}">[R] Reports</a>
-            <a href="/settings?mode=ops" class="{% if active == 'settings' %}active{% endif %}">[.] Settings</a>
+            <a href="/scan?mode=ops" class="{% if active == 'scan' %}active{% endif %}">
+                <span class="nav-icon">⊘</span> Vuln Scan
+            </a>
+            <a href="/simulate" class="{% if active == 'simulate' %}active{% endif %}">
+                <span class="nav-icon">⚔</span> Red Team
+            </a>
+            <a href="/generate" class="{% if active == 'generate' %}active{% endif %}">
+                <span class="nav-icon">+</span> Rule Gen
+            </a>
+            <div class="section-label">Reporting</div>
+            <a href="/reports?mode=ops" class="{% if active == 'reports' %}active{% endif %}">
+                <span class="nav-icon">▤</span> Reports
+            </a>
+            <a href="/chat?mode=ops" class="{% if active == 'chat' %}active{% endif %}">
+                <span class="nav-icon">◇</span> Ask Artemis
+            </a>
+            <a href="/settings?mode=ops" class="{% if active == 'settings' %}active{% endif %}">
+                <span class="nav-icon">⚙</span> Settings
+            </a>
             {% endif %}
         </nav>
 
@@ -67,6 +133,17 @@
         }
         setInterval(updateClock, 1000);
         updateClock();
+
+        // Chart.js global defaults
+        if (window.Chart) {
+            Chart.defaults.color = '#50506a';
+            Chart.defaults.borderColor = '#1e1e2a';
+            Chart.defaults.font.family = "'JetBrains Mono', monospace";
+            Chart.defaults.font.size = 10;
+            Chart.defaults.plugins.legend.display = false;
+            Chart.defaults.animation.duration = 800;
+            Chart.defaults.animation.easing = 'easeOutQuart';
+        }
     </script>
     {% block scripts %}{% endblock %}
 </body>
