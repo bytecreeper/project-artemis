@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Artemis{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/artemis.css">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js"></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <span class="logo">[ARTEMIS]</span>
+            <span style="color: var(--text-muted); font-size: 12px;">v3.0.0</span>
+            <div class="view-toggle" style="margin-left: 24px; display: flex; gap: 2px;">
+                <a href="/" class="toggle-btn {% if view_mode == 'simple' %}active{% endif %}" style="padding: 4px 12px; font-size: 11px; border-radius: 4px 0 0 4px; border: 1px solid var(--border); text-decoration: none; font-family: var(--font-mono); {% if view_mode == 'simple' %}background: var(--amber); color: var(--bg-primary); border-color: var(--amber);{% else %}color: var(--text-muted); background: var(--bg-card);{% endif %}">SIMPLE</a>
+                <a href="/ops" class="toggle-btn {% if view_mode == 'ops' %}active{% endif %}" style="padding: 4px 12px; font-size: 11px; border-radius: 0 4px 4px 0; border: 1px solid var(--border); text-decoration: none; font-family: var(--font-mono); {% if view_mode == 'ops' %}background: var(--amber); color: var(--bg-primary); border-color: var(--amber);{% else %}color: var(--text-muted); background: var(--bg-card);{% endif %}">OPS</a>
+            </div>
+            <div class="status">
+                <span><span class="dot ok live"></span>ONLINE</span>
+                <span id="clock" class="mono"></span>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            {% if view_mode == 'simple' %}
+            <a href="/" class="{% if active == 'home' %}active{% endif %}">[S] Security Status</a>
+            <a href="/chat" class="{% if active == 'chat' %}active{% endif %}">[?] Ask Artemis</a>
+            <div class="section-label">Quick Access</div>
+            <a href="/alerts" class="{% if active == 'alerts' %}active{% endif %}">[!] Alerts</a>
+            <a href="/network" class="{% if active == 'network' %}active{% endif %}">[N] Network</a>
+            <a href="/reports" class="{% if active == 'reports' %}active{% endif %}">[R] Reports</a>
+            <a href="/settings" class="{% if active == 'settings' %}active{% endif %}">[.] Settings</a>
+            {% else %}
+            <div class="section-label">Operations</div>
+            <a href="/ops" class="{% if active == 'dashboard' %}active{% endif %}">[>] Dashboard</a>
+            <a href="/guardian" class="{% if active == 'guardian' %}active{% endif %}">[#] Guardian</a>
+            <a href="/hunt" class="{% if active == 'hunt' %}active{% endif %}">[~] Hunt</a>
+            <div class="section-label">Intel</div>
+            <a href="/alerts" class="{% if active == 'alerts' %}active{% endif %}">[!] Alerts</a>
+            <a href="/network" class="{% if active == 'network' %}active{% endif %}">[N] Network</a>
+            <a href="/events" class="{% if active == 'events' %}active{% endif %}">[=] Events</a>
+            <div class="section-label">Tools</div>
+            <a href="/generate" class="{% if active == 'generate' %}active{% endif %}">[+] Rule Gen</a>
+            <a href="/reports" class="{% if active == 'reports' %}active{% endif %}">[R] Reports</a>
+            <a href="/settings" class="{% if active == 'settings' %}active{% endif %}">[.] Settings</a>
+            {% endif %}
+        </nav>
+
+        <!-- Main content -->
+        <main class="main">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').textContent =
+                now.toLocaleTimeString('en-US', { hour12: false });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

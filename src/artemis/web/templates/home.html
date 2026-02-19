@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}Security Status — Artemis{% endblock %}
+
+{% block content %}
+<div x-data="homeApp()" x-init="init()" style="padding: 24px;">
+
+    <!-- Security Score Hero -->
+    <div style="text-align: center; margin-bottom: 32px;">
+        <div :style="`width:140px;height:140px;border-radius:50%;border:4px solid ${scoreColor};margin:0 auto 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;`">
+            <div :style="`font-size:42px;font-weight:800;font-family:var(--font-mono);color:${scoreColor};`" x-text="score"></div>
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;" x-text="label"></div>
+        </div>
+        <p style="color: var(--text-muted); font-size: 14px; max-width: 400px; margin: 0 auto;" x-text="statusMessage"></p>
+    </div>
+
+    <!-- Quick Stats -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px;">
+        <div class="stat-card">
+            <div class="stat-value" x-text="stats.events_24h">—</div>
+            <div class="stat-label">Events (24h)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" :style="stats.open_alerts > 0 ? 'color:#ff3333' : ''" x-text="stats.open_alerts">—</div>
+            <div class="stat-label">Open Alerts</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" x-text="stats.network_hosts">—</div>
+            <div class="stat-label">Network Devices</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" :style="findings.length > 0 ? 'color:#ffbf00' : 'color:#00ff41'" x-text="findings.length">—</div>
+            <div class="stat-label">Active Findings</div>
+        </div>
+    </div>
+
+    <!-- Findings List -->
+    <template x-if="findings.length > 0">
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+            <h3 style="font-family: var(--font-mono); color: var(--amber); font-size: 14px; margin: 0 0 16px;">[!] SECURITY FINDINGS</h3>
+            <template x-for="f in findings" :key="f.id">
+                <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border);">
+                    <span :style="`background:${sevColor(f.severity)};color:#000;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700;text-transform:uppercase;flex-shrink:0;margin-top:2px;`" x-text="f.severity"></span>
+                    <div style="flex:1;">
+                        <div style="font-weight: 600;" x-text="f.title"></div>
+                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" x-text="f.description"></div>
+                        <div x-show="f.mitre_id" style="font-size: 11px; color: var(--amber); margin-top: 4px; font-family: var(--font-mono);" x-text="f.mitre_id"></div>
+                    </div>
+                    <button @click="dismissFinding(f.id)" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;font-family:var(--font-mono);" title="Dismiss">DISMISS</button>
+                </div>
+            </template>
+        </div>
+    </template>
+
+    <!-- All Clear Message -->
+    <template x-if="loaded && findings.length === 0 && stats.open_alerts === 0">
+        <div style="text-align: center; padding: 40px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;">
+            <div style="font-size: 48px; margin-bottom: 12px; color: #00ff41;">&#10003;</div>
+            <h3 style="color: #00ff41; margin: 0 0 8px;">All Clear</h3>
+            <p style="color: var(--text-muted); font-size: 14px;">No security issues detected. Your system is being actively monitored.</p>
+        </div>
+    </template>
+
+    <!-- Quick Actions -->
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px;">
+        <a href="/chat" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);text-decoration:none;font-family:var(--font-mono);font-size:13px;">
+            [?] Ask Artemis
+        </a>
+        <a href="/reports" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);text-decoration:none;font-family:var(--font-mono);font-size:13px;">
+            [R] Generate Report
+        </a>
+        <a href="/alerts" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);text-decoration:none;font-family:var(--font-mono);font-size:13px;">
+            [!] View Alerts
+        </a>
+    </div>
+</div>
+
+<style>
+    .stat-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+    }
+    .stat-value {
+        font-size: 28px;
+        font-weight: 800;
+        font-family: var(--font-mono);
+        color: var(--amber);
+    }
+    .stat-label {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 4px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function homeApp() {
+    return {
+        score: '—',
+        label: '...',
+        scoreColor: '#888',
+        statusMessage: 'Loading...',
+        stats: { events_24h: 0, open_alerts: 0, network_hosts: 0, edr_plugins: 0 },
+        findings: [],
+        loaded: false,
+
+        async init() {
+            await Promise.all([this.loadScore(), this.loadStats(), this.loadFindings()]);
+            this.loaded = true;
+        },
+
+        async loadScore() {
+            try {
+                const r = await fetch('/api/security-score');
+                const d = await r.json();
+                this.score = d.score;
+                this.label = d.label;
+                this.scoreColor = d.score >= 80 ? '#00ff41' : d.score >= 50 ? '#ffbf00' : '#ff3333';
+
+                if (d.score >= 80 && d.total_findings === 0) {
+                    this.statusMessage = 'Your system is being monitored. No issues found.';
+                } else if (d.score >= 50) {
+                    this.statusMessage = 'Some issues need attention. Review findings below.';
+                } else {
+                    this.statusMessage = 'Immediate attention required. Review findings below.';
+                }
+            } catch(e) { this.statusMessage = 'Unable to load security status.'; }
+        },
+
+        async loadStats() {
+            try {
+                const r = await fetch('/api/stats');
+                this.stats = await r.json();
+            } catch(e) {}
+        },
+
+        async loadFindings() {
+            try {
+                const r = await fetch('/api/findings?active_only=true');
+                const d = await r.json();
+                this.findings = d.findings || [];
+            } catch(e) {}
+        },
+
+        async dismissFinding(id) {
+            try {
+                await fetch(`/api/findings/${id}/dismiss`, { method: 'POST' });
+                this.findings = this.findings.filter(f => f.id !== id);
+                await this.loadScore();
+            } catch(e) {}
+        },
+
+        sevColor(sev) {
+            return { critical: '#ff3333', high: '#ff6633', medium: '#ffbf00', low: '#66ccff', info: '#888' }[sev] || '#888';
+        }
+    };
+}
+</script>
+{% endblock %}

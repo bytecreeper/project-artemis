@@ -1,0 +1,529 @@
+{% extends "base.html" %}
+{% set active = "guardian" %}
+{% block title %}Artemis — Guardian{% endblock %}
+
+{% block head %}
+<style>
+    .guardian-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto 1fr;
+        gap: 16px;
+        height: calc(100vh - 120px);
+    }
+    .guardian-grid .full-width { grid-column: 1 / -1; }
+
+    /* Live feed */
+    .feed {
+        overflow-y: auto;
+        max-height: 100%;
+        scrollbar-width: thin;
+    }
+    .feed-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border);
+        font-size: 12px;
+        animation: fadeIn 0.3s ease;
+        transition: background 0.15s;
+    }
+    .feed-item:hover { background: var(--bg-card-hover); }
+    .feed-item .time {
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+        white-space: nowrap;
+        min-width: 70px;
+    }
+    .feed-item .sev-dot {
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        margin-top: 4px;
+        flex-shrink: 0;
+    }
+    .sev-dot.s0 { background: #555; }
+    .sev-dot.s1 { background: var(--green); }
+    .sev-dot.s2 { background: #f1c40f; }
+    .sev-dot.s3 { background: var(--amber); }
+    .sev-dot.s4 { background: var(--red); }
+    .feed-item .type-tag {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 3px;
+        background: rgba(245,166,35,0.1);
+        color: var(--amber-dim);
+        white-space: nowrap;
+    }
+    .feed-item .detail {
+        color: var(--text-secondary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+    }
+
+    /* Stats bar */
+    .stats-bar {
+        display: flex;
+        gap: 24px;
+        padding: 12px 16px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        align-items: center;
+    }
+    .stats-bar .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .stats-bar .stat-val {
+        font-family: var(--font-mono);
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--amber);
+    }
+    .stats-bar .stat-lbl {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+    }
+    .ws-status {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        color: var(--text-muted);
+    }
+    .ws-status .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+    /* Process table */
+    .proc-table { font-size: 12px; }
+    .proc-table th { font-size: 10px; position: sticky; top: 0; background: var(--bg-card); z-index: 1; }
+    .proc-table td { padding: 6px 10px; font-family: var(--font-mono); font-size: 11px; }
+    .proc-table .risk-bar {
+        width: 40px; height: 6px;
+        background: var(--border);
+        border-radius: 3px;
+        overflow: hidden;
+        display: inline-block;
+    }
+    .proc-table .risk-bar .fill { height: 100%; border-radius: 3px; }
+
+    /* Network map (simple list for now) */
+    .host-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+    }
+    .host-card .host-ip {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        color: var(--text-primary);
+        min-width: 130px;
+    }
+    .host-card .host-mac {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-muted);
+    }
+    .host-card .port-badges { display: flex; gap: 4px; margin-left: auto; }
+    .port-badge {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        padding: 1px 5px;
+        border-radius: 3px;
+        background: rgba(46,204,113,0.15);
+        color: var(--green);
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Pulse for new events */
+    @keyframes eventPulse {
+        0% { box-shadow: inset 3px 0 0 var(--amber); }
+        100% { box-shadow: inset 3px 0 0 transparent; }
+    }
+    .feed-item.new { animation: fadeIn 0.3s ease, eventPulse 2s ease-out; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div x-data="guardian()" x-init="init()">
+    <!-- Stats bar -->
+    <div class="stats-bar full-width" style="margin-bottom: 16px;">
+        <div class="stat-item">
+            <div>
+                <div class="stat-val" x-text="counters.eps"></div>
+                <div class="stat-lbl">Events/Min</div>
+            </div>
+        </div>
+        <div class="stat-item">
+            <div>
+                <div class="stat-val" x-text="counters.total"></div>
+                <div class="stat-lbl">Total Events</div>
+            </div>
+        </div>
+        <div class="stat-item">
+            <div>
+                <div class="stat-val" x-text="counters.processes"></div>
+                <div class="stat-lbl">Processes</div>
+            </div>
+        </div>
+        <div class="stat-item">
+            <div>
+                <div class="stat-val" x-text="counters.hosts"></div>
+                <div class="stat-lbl">Net Hosts</div>
+            </div>
+        </div>
+        <div class="stat-item">
+            <div>
+                <div class="stat-val" x-text="counters.alerts" :style="counters.alerts > 0 ? 'color: var(--red)' : ''"></div>
+                <div class="stat-lbl">Alerts</div>
+            </div>
+        </div>
+        <div class="ws-status">
+            <span class="dot" :class="wsConnected ? 'ok' : 'err'" :style="wsConnected ? '' : 'animation: pulse 1s infinite'"></span>
+            <span x-text="wsConnected ? 'LIVE' : 'RECONNECTING'"></span>
+        </div>
+    </div>
+
+    <div class="guardian-grid">
+        <!-- Live Event Feed -->
+        <div class="card" style="display: flex; flex-direction: column; overflow: hidden;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <h3>[&gt;] Live Feed</h3>
+                <div style="display: flex; gap: 6px;">
+                    <button class="btn" style="font-size: 11px; padding: 4px 8px;"
+                            :style="feedFilter === '' ? 'border-color: var(--amber); color: var(--amber)' : ''"
+                            @click="feedFilter = ''">All</button>
+                    <button class="btn" style="font-size: 11px; padding: 4px 8px;"
+                            :style="feedFilter === 'edr' ? 'border-color: var(--amber); color: var(--amber)' : ''"
+                            @click="feedFilter = 'edr'">EDR</button>
+                    <button class="btn" style="font-size: 11px; padding: 4px 8px;"
+                            :style="feedFilter === 'net' ? 'border-color: var(--amber); color: var(--amber)' : ''"
+                            @click="feedFilter = 'net'">Net</button>
+                    <button class="btn" style="font-size: 11px; padding: 4px 8px;"
+                            :style="feedFilter === 'high' ? 'border-color: var(--red); color: var(--red)' : ''"
+                            @click="feedFilter = 'high'">High+</button>
+                    <button class="btn" style="font-size: 11px; padding: 4px 8px;" @click="clearFeed()"
+                            title="Clear feed">X</button>
+                </div>
+            </div>
+            <div class="feed" id="liveFeed" style="flex: 1; overflow-y: auto;">
+                <template x-for="event in filteredFeed" :key="event.id">
+                    <div class="feed-item new">
+                        <span class="time" x-text="formatTime(event.timestamp)"></span>
+                        <span class="sev-dot" :class="'s' + event.severity"></span>
+                        <span class="type-tag" x-text="shortType(event.event_type)"></span>
+                        <span class="detail" x-text="eventDetail(event)"></span>
+                    </div>
+                </template>
+                <template x-if="filteredFeed.length === 0">
+                    <div style="padding: 40px; text-align: center; color: var(--text-muted);">
+                        <template x-if="wsConnected">
+                            <span>Watching for events...</span>
+                        </template>
+                        <template x-if="!wsConnected">
+                            <span>Connecting to event stream...</span>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Process Activity -->
+        <div class="card" style="display: flex; flex-direction: column; overflow: hidden;">
+            <h3 style="margin-bottom: 8px;">[#] Process Activity</h3>
+            <div style="flex: 1; overflow-y: auto;">
+                <table class="proc-table">
+                    <thead>
+                        <tr><th>PID</th><th>Name</th><th>User</th><th>Risk</th><th>Time</th></tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="proc in recentProcesses" :key="proc.id">
+                            <tr :style="proc.severity >= 3 ? 'background: rgba(231,76,60,0.08)' : ''">
+                                <td x-text="proc.data.pid || '-'"></td>
+                                <td x-text="proc.data.name || '-'"></td>
+                                <td style="color: var(--text-muted);" x-text="shortUser(proc.data.username)"></td>
+                                <td>
+                                    <div class="risk-bar">
+                                        <div class="fill" :style="'width:' + (proc.severity * 25) + '%; background:' + riskColor(proc.severity)"></div>
+                                    </div>
+                                </td>
+                                <td style="color: var(--text-muted);" x-text="formatTime(proc.timestamp)"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Network Hosts -->
+        <div class="card" style="display: flex; flex-direction: column; overflow: hidden;">
+            <h3 style="margin-bottom: 8px;">[*] Network</h3>
+            <div style="flex: 1; overflow-y: auto;">
+                <template x-if="hosts.length === 0">
+                    <div style="padding: 20px; text-align: center; color: var(--text-muted);">Scanning...</div>
+                </template>
+                <template x-for="host in hosts" :key="host.ip">
+                    <div class="host-card">
+                        <span class="dot ok"></span>
+                        <span class="host-ip" x-text="host.ip"></span>
+                        <span class="host-mac" x-text="host.mac || ''"></span>
+                        <div class="port-badges">
+                            <template x-for="port in parsePorts(host.open_ports)" :key="port">
+                                <span class="port-badge" x-text="port"></span>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- File Integrity / Alerts -->
+        <div class="card" style="display: flex; flex-direction: column; overflow: hidden;">
+            <h3 style="margin-bottom: 8px;">[!] Alerts &amp; FIM</h3>
+            <div style="flex: 1; overflow-y: auto;">
+                <template x-if="alerts.length === 0 && fimEvents.length === 0">
+                    <div style="padding: 20px; text-align: center; color: var(--green); font-family: var(--font-mono); font-size: 13px;">
+                        ALL CLEAR
+                    </div>
+                </template>
+                <template x-for="alert in alerts" :key="alert.id">
+                    <div class="feed-item" style="border-left: 3px solid var(--red);">
+                        <span class="time" x-text="formatTime(alert.timestamp)"></span>
+                        <span class="badge critical">ALERT</span>
+                        <span class="detail" x-text="alert.title || alert.data?.rule || 'Alert'"></span>
+                    </div>
+                </template>
+                <template x-for="event in fimEvents" :key="event.id">
+                    <div class="feed-item" style="border-left: 3px solid var(--amber);">
+                        <span class="time" x-text="formatTime(event.timestamp)"></span>
+                        <span class="type-tag" x-text="shortType(event.event_type)"></span>
+                        <span class="detail" x-text="event.data?.path || ''"></span>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function guardian() {
+    return {
+        // State
+        feed: [],
+        recentProcesses: [],
+        hosts: [],
+        alerts: [],
+        fimEvents: [],
+        feedFilter: '',
+        wsConnected: false,
+        counters: { eps: 0, total: 0, processes: 0, hosts: 0, alerts: 0 },
+
+        // Internal
+        _ws: null,
+        _eventCount1m: [],
+        _maxFeed: 200,
+        _reconnectTimer: null,
+
+        async init() {
+            // Load initial data
+            await this.loadInitial();
+            // Connect SSE stream
+            this.connectStream();
+            // EPS counter
+            setInterval(() => this.updateEPS(), 5000);
+            // Periodic data refresh (hosts, alerts from API)
+            setInterval(() => this.refreshData(), 15000);
+        },
+
+        async loadInitial() {
+            try {
+                const [events, hosts, alerts, stats, edr] = await Promise.all([
+                    fetch('/api/events?limit=50').then(r => r.json()),
+                    fetch('/api/network/hosts').then(r => r.json()),
+                    fetch('/api/alerts').then(r => r.json()),
+                    fetch('/api/stats').then(r => r.json()),
+                    fetch('/api/edr/status').then(r => r.json()),
+                ]);
+
+                // Populate feed with recent events (reversed for chronological)
+                this.feed = events.reverse().map(e => ({
+                    ...e, event_type: e.type, timestamp: new Date(e.timestamp).getTime() / 1000
+                }));
+
+                // Extract processes
+                this.recentProcesses = events
+                    .filter(e => e.type && e.type.startsWith('edr.process.'))
+                    .slice(0, 30)
+                    .map(e => ({...e, event_type: e.type, timestamp: new Date(e.timestamp).getTime() / 1000}));
+
+                this.hosts = hosts;
+                this.alerts = alerts;
+                this.counters.total = stats.events_24h || 0;
+                this.counters.hosts = hosts.length;
+                this.counters.alerts = alerts.length;
+                this.counters.processes = edr.process_monitor?.tracked_pids || 0;
+            } catch (e) {
+                console.error('Initial load failed:', e);
+            }
+        },
+
+        connectStream() {
+            // Use Server-Sent Events for real-time push
+            const url = '/api/events/stream';
+            this._es = new EventSource(url);
+
+            this._es.onopen = () => {
+                this.wsConnected = true;
+                if (this._reconnectTimer) {
+                    clearTimeout(this._reconnectTimer);
+                    this._reconnectTimer = null;
+                }
+            };
+
+            this._es.onmessage = (msg) => {
+                try {
+                    const event = JSON.parse(msg.data);
+                    this.handleEvent(event);
+                } catch (e) { console.error('SSE parse error:', e); }
+            };
+
+            this._es.onerror = () => {
+                this.wsConnected = false;
+                // EventSource auto-reconnects, but mark as disconnected
+            };
+        },
+
+        handleEvent(event) {
+            // Add to feed
+            this.feed.push(event);
+            if (this.feed.length > this._maxFeed) this.feed.shift();
+
+            // Track for EPS
+            this._eventCount1m.push(Date.now());
+            this.counters.total++;
+
+            // Route to specific panels
+            const t = event.event_type;
+
+            if (t.startsWith('edr.process.start') || t.startsWith('edr.process.suspicious')) {
+                this.recentProcesses.unshift(event);
+                if (this.recentProcesses.length > 30) this.recentProcesses.pop();
+            }
+
+            if (t.startsWith('edr.file.')) {
+                this.fimEvents.unshift(event);
+                if (this.fimEvents.length > 20) this.fimEvents.pop();
+            }
+
+            if (t === 'correlation.chain') {
+                this.alerts.unshift(event);
+                this.counters.alerts++;
+            }
+
+            if (t === 'net.host.discovered') {
+                const existing = this.hosts.find(h => h.ip === event.data.ip);
+                if (!existing) {
+                    this.hosts.push(event.data);
+                    this.counters.hosts = this.hosts.length;
+                }
+            }
+
+            // Auto-scroll feed
+            this.$nextTick(() => {
+                const feed = document.getElementById('liveFeed');
+                if (feed) feed.scrollTop = feed.scrollHeight;
+            });
+        },
+
+        async refreshData() {
+            try {
+                const [hosts, alerts, edr] = await Promise.all([
+                    fetch('/api/network/hosts').then(r => r.json()),
+                    fetch('/api/alerts').then(r => r.json()),
+                    fetch('/api/edr/status').then(r => r.json()),
+                ]);
+                this.hosts = hosts;
+                this.counters.hosts = hosts.length;
+                this.counters.processes = edr.process_monitor?.tracked_pids || 0;
+                // Only update alerts from API if we haven't gotten WS alerts
+                if (alerts.length > this.alerts.length) this.alerts = alerts;
+                this.counters.alerts = this.alerts.length;
+            } catch (e) { /* silent */ }
+        },
+
+        updateEPS() {
+            const now = Date.now();
+            this._eventCount1m = this._eventCount1m.filter(t => now - t < 60000);
+            this.counters.eps = this._eventCount1m.length;
+        },
+
+        clearFeed() { this.feed = []; },
+
+        // Computed
+        get filteredFeed() {
+            if (!this.feedFilter) return this.feed;
+            if (this.feedFilter === 'edr') return this.feed.filter(e => e.event_type?.startsWith('edr.'));
+            if (this.feedFilter === 'net') return this.feed.filter(e => e.event_type?.startsWith('net.'));
+            if (this.feedFilter === 'high') return this.feed.filter(e => e.severity >= 3);
+            return this.feed;
+        },
+
+        // Formatters
+        formatTime(ts) {
+            if (!ts) return '';
+            const d = typeof ts === 'number' ? new Date(ts * 1000) : new Date(ts);
+            return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        },
+
+        shortType(type) {
+            if (!type) return '';
+            const parts = type.split('.');
+            return parts.slice(-2).join('.');
+        },
+
+        shortUser(user) {
+            if (!user) return '-';
+            return user.split('\\').pop();
+        },
+
+        eventDetail(event) {
+            const d = event.data;
+            if (!d) return '';
+            if (d.name && d.cmdline) return d.name + ' → ' + d.cmdline.substring(0, 100);
+            if (d.name) return d.name;
+            if (d.path) return d.path;
+            if (d.ip) return d.ip + (d.mac ? ' (' + d.mac + ')' : '');
+            if (d.pid) return 'PID ' + d.pid;
+            if (d.rule) return d.rule;
+            if (d.sysmon_event_id) return 'Sysmon EventID ' + d.sysmon_event_id;
+            return JSON.stringify(d).substring(0, 100);
+        },
+
+        parsePorts(ports) {
+            if (!ports) return [];
+            if (typeof ports === 'string') { try { ports = JSON.parse(ports); } catch { return []; } }
+            return Array.isArray(ports) ? ports : [];
+        },
+
+        riskColor(sev) {
+            return ['#555', '#2ecc71', '#f1c40f', '#f5a623', '#e74c3c'][sev] || '#555';
+        },
+    };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}Ask Artemis{% endblock %}
+
+{% block content %}
+<div x-data="chatApp()" x-init="init()" style="display: flex; flex-direction: column; height: calc(100vh - 64px); padding: 0;">
+
+    <!-- Chat Header -->
+    <div style="padding: 16px 24px; border-bottom: 1px solid var(--border); flex-shrink: 0;">
+        <h2 style="margin: 0; font-size: 18px; color: var(--amber); font-family: var(--font-mono);">[?] ASK ARTEMIS</h2>
+        <p style="margin: 4px 0 0; color: var(--text-muted); font-size: 13px;">
+            Ask anything about your security in plain English.
+        </p>
+    </div>
+
+    <!-- Messages Area -->
+    <div id="chat-messages" style="flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+
+        <!-- Welcome message -->
+        <template x-if="messages.length === 0">
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 24px; color: var(--text-muted);">
+                <div style="font-size: 48px; font-family: var(--font-mono); color: var(--amber);">[?]</div>
+                <div style="text-align: center; max-width: 480px;">
+                    <h3 style="color: var(--text-primary); margin: 0 0 12px;">What would you like to know?</h3>
+                    <p style="font-size: 14px; line-height: 1.6;">
+                        I can tell you about your security status, network devices, alerts, events, and more.
+                        Just ask in plain English.
+                    </p>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 500px;">
+                    <button @click="sendQuick('How is my system doing?')" class="quick-btn">How's my system?</button>
+                    <button @click="sendQuick('Any alerts?')" class="quick-btn">Any alerts?</button>
+                    <button @click="sendQuick('What devices are on my network?')" class="quick-btn">Network devices</button>
+                    <button @click="sendQuick('What happened today?')" class="quick-btn">What happened today?</button>
+                    <button @click="sendQuick('What is my security score?')" class="quick-btn">Security score</button>
+                    <button @click="sendQuick('Any security issues?')" class="quick-btn">Security issues</button>
+                </div>
+            </div>
+        </template>
+
+        <!-- Chat messages -->
+        <template x-for="(msg, i) in messages" :key="i">
+            <div :class="msg.role === 'user' ? 'chat-msg-user' : 'chat-msg-assistant'">
+                <div class="chat-msg-label" x-text="msg.role === 'user' ? 'YOU' : 'ARTEMIS'"></div>
+                <div class="chat-msg-content" x-html="formatMessage(msg.content)"></div>
+            </div>
+        </template>
+
+        <!-- Typing indicator -->
+        <template x-if="loading">
+            <div class="chat-msg-assistant">
+                <div class="chat-msg-label">ARTEMIS</div>
+                <div class="chat-msg-content" style="color: var(--text-muted);">
+                    <span class="typing-dots">Thinking<span>.</span><span>.</span><span>.</span></span>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Input Area -->
+    <div style="padding: 16px 24px; border-top: 1px solid var(--border); flex-shrink: 0; background: var(--bg-card);">
+        <form @submit.prevent="send()" style="display: flex; gap: 12px;">
+            <input
+                x-model="input"
+                x-ref="chatInput"
+                type="text"
+                placeholder="Ask me anything about your security..."
+                :disabled="loading"
+                style="flex: 1; background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-primary); padding: 12px 16px; border-radius: 6px; font-size: 14px; font-family: var(--font-mono); outline: none;"
+                @focus="$el.style.borderColor = 'var(--amber)'"
+                @blur="$el.style.borderColor = 'var(--border)'"
+            >
+            <button
+                type="submit"
+                :disabled="loading || !input.trim()"
+                style="background: var(--amber); color: var(--bg-primary); border: none; padding: 12px 24px; border-radius: 6px; font-family: var(--font-mono); font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap;"
+                :style="(loading || !input.trim()) ? 'opacity: 0.5; cursor: not-allowed;' : ''"
+            >SEND</button>
+        </form>
+    </div>
+</div>
+
+<style>
+    .chat-msg-user {
+        align-self: flex-end;
+        max-width: 75%;
+        background: rgba(255, 191, 0, 0.1);
+        border: 1px solid rgba(255, 191, 0, 0.2);
+        border-radius: 12px 12px 4px 12px;
+        padding: 12px 16px;
+    }
+    .chat-msg-assistant {
+        align-self: flex-start;
+        max-width: 85%;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px 12px 12px 4px;
+        padding: 12px 16px;
+    }
+    .chat-msg-label {
+        font-size: 10px;
+        font-family: var(--font-mono);
+        color: var(--text-muted);
+        margin-bottom: 6px;
+        letter-spacing: 1px;
+    }
+    .chat-msg-content {
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--text-primary);
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+    .chat-msg-content strong {
+        color: var(--amber);
+    }
+    .quick-btn {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        color: var(--text-primary);
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-family: var(--font-mono);
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .quick-btn:hover {
+        border-color: var(--amber);
+        color: var(--amber);
+    }
+    .typing-dots span {
+        animation: blink 1.4s infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink {
+        0%, 100% { opacity: 0.2; }
+        50% { opacity: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function chatApp() {
+    return {
+        messages: [],
+        input: '',
+        loading: false,
+
+        init() {
+            // Load existing history
+            fetch('/api/chat/history')
+                .then(r => r.json())
+                .then(data => { this.messages = data; this.scrollBottom(); });
+        },
+
+        async send() {
+            const text = this.input.trim();
+            if (!text || this.loading) return;
+
+            this.messages.push({ role: 'user', content: text, timestamp: Date.now()/1000 });
+            this.input = '';
+            this.loading = true;
+            this.scrollBottom();
+
+            try {
+                const resp = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text }),
+                });
+                const data = await resp.json();
+                this.messages.push({
+                    role: 'assistant',
+                    content: data.response,
+                    timestamp: data.timestamp,
+                });
+            } catch (e) {
+                this.messages.push({
+                    role: 'assistant',
+                    content: 'Connection error. Is the server running?',
+                    timestamp: Date.now()/1000,
+                });
+            }
+
+            this.loading = false;
+            this.scrollBottom();
+            this.$nextTick(() => this.$refs.chatInput?.focus());
+        },
+
+        sendQuick(text) {
+            this.input = text;
+            this.send();
+        },
+
+        scrollBottom() {
+            this.$nextTick(() => {
+                const el = document.getElementById('chat-messages');
+                if (el) el.scrollTop = el.scrollHeight;
+            });
+        },
+
+        formatMessage(text) {
+            if (!text) return '';
+            // Bold: **text** → <strong>text</strong>
+            text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            // Convert markdown-style lists
+            text = text.replace(/^- /gm, '• ');
+            return text;
+        }
+    };
+}
+</script>
+{% endblock %}

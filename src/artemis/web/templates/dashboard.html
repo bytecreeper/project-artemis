@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% set active = "dashboard" %}
+{% block title %}Artemis — Dashboard{% endblock %}
+
+{% block content %}
+<div x-data="dashboard()" x-init="init()">
+    <!-- Stats row -->
+    <div class="grid-4" style="margin-bottom: 24px;">
+        <div class="card stat">
+            <div class="value" x-text="stats.events_24h">0</div>
+            <div class="label">Events (24h)</div>
+        </div>
+        <div class="card stat">
+            <div class="value" x-text="stats.open_alerts">0</div>
+            <div class="label">Open Alerts</div>
+        </div>
+        <div class="card stat">
+            <div class="value" x-text="stats.network_hosts">0</div>
+            <div class="label">Network Hosts</div>
+        </div>
+        <div class="card stat">
+            <div class="value" x-text="stats.edr_plugins">0</div>
+            <div class="label">EDR Plugins</div>
+        </div>
+    </div>
+
+    <!-- Two column layout -->
+    <div class="grid-2">
+        <!-- Recent Alerts -->
+        <div class="card">
+            <h3>[!] Recent Alerts</h3>
+            <template x-if="alerts.length === 0">
+                <p style="color: var(--text-muted); padding: 12px 0;">No open alerts — systems nominal.</p>
+            </template>
+            <table x-show="alerts.length > 0">
+                <thead>
+                    <tr><th>Time</th><th>Title</th><th>Severity</th></tr>
+                </thead>
+                <tbody>
+                    <template x-for="alert in alerts" :key="alert.id">
+                        <tr>
+                            <td class="mono" x-text="formatTime(alert.timestamp)"></td>
+                            <td x-text="alert.title"></td>
+                            <td><span class="badge" :class="severityClass(alert.severity)" x-text="severityLabel(alert.severity)"></span></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- EDR Status -->
+        <div class="card">
+            <h3>[#] EDR Status</h3>
+            <template x-if="Object.keys(edrStatus).length === 0">
+                <p style="color: var(--text-muted); padding: 12px 0;">No plugins loaded.</p>
+            </template>
+            <template x-for="(status, name) in edrStatus" :key="name">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border);">
+                    <div>
+                        <span class="mono" x-text="name"></span>
+                        <template x-if="status.events_processed !== undefined">
+                            <span style="color: var(--text-muted); font-size: 11px; margin-left: 8px;" x-text="'(' + status.events_processed + ' events)'"></span>
+                        </template>
+                        <template x-if="status.events_emitted !== undefined">
+                            <span style="color: var(--text-muted); font-size: 11px; margin-left: 8px;" x-text="'(' + status.events_emitted + ' events)'"></span>
+                        </template>
+                        <template x-if="status.tracked_files !== undefined">
+                            <span style="color: var(--text-muted); font-size: 11px; margin-left: 8px;" x-text="'(' + status.tracked_files + ' files)'"></span>
+                        </template>
+                    </div>
+                    <span>
+                        <span class="dot" :class="status.running ? 'ok' : 'err'"></span>
+                        <span x-text="status.running ? 'ACTIVE' : 'STOPPED'" style="font-size: 12px; font-family: var(--font-mono);"></span>
+                    </span>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Recent Events -->
+    <div class="card" style="margin-top: 16px;">
+        <h3>[=] Recent Events</h3>
+        <template x-if="events.length === 0">
+            <p style="color: var(--text-muted); padding: 12px 0;">No events recorded yet.</p>
+        </template>
+        <table x-show="events.length > 0">
+            <thead>
+                <tr><th>Time</th><th>Type</th><th>Source</th><th>Severity</th><th>Details</th></tr>
+            </thead>
+            <tbody>
+                <template x-for="event in events.slice(0, 20)" :key="event.id">
+                    <tr>
+                        <td class="mono" x-text="formatTime(event.timestamp)"></td>
+                        <td class="mono" x-text="event.type.split('.').pop()"></td>
+                        <td x-text="event.source"></td>
+                        <td><span class="badge" :class="severityClass(event.severity)" x-text="severityLabel(event.severity)"></span></td>
+                        <td class="mono" style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="eventSummary(event)"></td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Network hosts -->
+    <div class="card" style="margin-top: 16px;">
+        <h3>[*] Network Hosts</h3>
+        <template x-if="hosts.length === 0">
+            <p style="color: var(--text-muted); padding: 12px 0;">Scanning network... no hosts discovered yet.</p>
+        </template>
+        <table x-show="hosts.length > 0">
+            <thead>
+                <tr><th>IP</th><th>MAC</th><th>Hostname</th><th>Open Ports</th></tr>
+            </thead>
+            <tbody>
+                <template x-for="host in hosts" :key="host.ip">
+                    <tr>
+                        <td class="mono" x-text="host.ip"></td>
+                        <td class="mono" x-text="host.mac || '-'"></td>
+                        <td x-text="host.hostname || '-'"></td>
+                        <td class="mono" x-text="formatPorts(host.open_ports)"></td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function dashboard() {
+    return {
+        stats: { events_24h: 0, open_alerts: 0, network_hosts: 0, edr_plugins: 0 },
+        alerts: [],
+        edrStatus: {},
+        events: [],
+        hosts: [],
+
+        async init() {
+            await this.refresh();
+            // Auto-refresh every 5 seconds
+            setInterval(() => this.refresh(), 5000);
+        },
+
+        async refresh() {
+            try {
+                const [statsResp, alertsResp, hostsResp, edrResp, eventsResp] = await Promise.allSettled([
+                    fetch('/api/stats').then(r => r.json()),
+                    fetch('/api/alerts').then(r => r.json()),
+                    fetch('/api/network/hosts').then(r => r.json()),
+                    fetch('/api/edr/status').then(r => r.json()),
+                    fetch('/api/events?limit=20').then(r => r.json()),
+                ]);
+
+                if (statsResp.status === 'fulfilled') this.stats = statsResp.value;
+                if (alertsResp.status === 'fulfilled') this.alerts = alertsResp.value;
+                if (hostsResp.status === 'fulfilled') {
+                    this.hosts = hostsResp.value;
+                    this.stats.network_hosts = this.hosts.length;
+                }
+                if (edrResp.status === 'fulfilled') this.edrStatus = edrResp.value;
+                if (eventsResp.status === 'fulfilled') this.events = eventsResp.value;
+            } catch (e) {
+                console.error('Dashboard refresh failed:', e);
+            }
+        },
+
+        formatTime(ts) {
+            if (!ts) return '-';
+            try {
+                const d = new Date(ts);
+                return d.toLocaleTimeString('en-US', { hour12: false }) + ' ' +
+                       d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            } catch { return ts; }
+        },
+
+        formatPorts(ports) {
+            if (!ports) return 'none';
+            if (typeof ports === 'string') {
+                try { ports = JSON.parse(ports); } catch { return ports; }
+            }
+            if (Array.isArray(ports) && ports.length > 0) return ports.join(', ');
+            return 'none';
+        },
+
+        eventSummary(event) {
+            const d = event.data;
+            if (!d || typeof d !== 'object') return '';
+            if (d.name) return d.name + (d.cmdline ? ': ' + d.cmdline.substring(0, 60) : '');
+            if (d.pid) return 'PID ' + d.pid;
+            if (d.path) return d.path;
+            if (d.ip) return d.ip;
+            if (d.sysmon_event_id) return 'Sysmon ID ' + d.sysmon_event_id;
+            return JSON.stringify(d).substring(0, 80);
+        },
+
+        severityClass(s) {
+            return ['low', 'low', 'medium', 'high', 'critical'][s] || 'low';
+        },
+
+        severityLabel(s) {
+            return ['INFO', 'LOW', 'MED', 'HIGH', 'CRIT'][s] || 'INFO';
+        },
+    };
+}
+</script>
+{% endblock %}

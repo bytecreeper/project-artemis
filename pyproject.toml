@@ -1,0 +1,64 @@
+[project]
+name = "project-artemis"
+version = "3.0.0"
+description = "AI-powered security operations platform — detection engineering, EDR, network monitoring, and red team capabilities."
+authors = [{ name = "ByteCreeper" }]
+requires-python = ">=3.12,<3.14"
+license = { text = "MIT" }
+
+dependencies = [
+    # Web
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.34",
+    "jinja2>=3.1",
+    # Data
+    "duckdb>=1.2",
+    # Messaging
+    "nats-py>=2.9",
+    # AI providers
+    "httpx>=0.28",
+    "ollama>=0.4",
+    # EDR / System
+    "psutil>=6.1",
+    "watchdog>=6.0",
+    # Rule generation
+    "pyyaml>=6.0",
+    # Network
+    "scapy>=2.6",
+    # Misc
+    "pydantic>=2.10",
+    "rich>=13.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "ruff>=0.9",
+    "mypy>=1.14",
+]
+
+[project.scripts]
+artemis = "artemis.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/artemis"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true

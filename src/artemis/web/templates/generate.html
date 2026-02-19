@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% set active = "generate" %}
+{% block title %}Artemis — Rule Generator{% endblock %}
+
+{% block content %}
+<div x-data="generatePage()">
+    <h2 style="color: var(--amber); font-family: var(--font-mono); font-size: 16px; margin-bottom: 20px;">[+] RULE GENERATOR</h2>
+
+    <div class="grid-2">
+        <!-- Input -->
+        <div class="card">
+            <h3>Describe the Threat</h3>
+            <textarea x-model="description" placeholder="e.g., Detect PowerShell downloading and executing a remote script using IEX..."
+                style="width: 100%; min-height: 120px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); padding: 12px; font-family: var(--font-sans); font-size: 13px; resize: vertical; margin-bottom: 12px;"></textarea>
+
+            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                <div>
+                    <label style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Format</label>
+                    <select x-model="format" style="display: block; margin-top: 4px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); padding: 6px 10px; font-size: 13px;">
+                        <option value="sigma">Sigma</option>
+                        <option value="yara">YARA</option>
+                        <option value="splunk">Splunk SPL</option>
+                        <option value="kql">KQL</option>
+                        <option value="snort">Snort</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Severity</label>
+                    <select x-model="severity" style="display: block; margin-top: 4px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); padding: 6px 10px; font-size: 13px;">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn primary" @click="generate()" :disabled="loading || !description.trim()">
+                <span x-show="!loading">[&gt;] Generate</span>
+                <span x-show="loading">Generating...</span>
+            </button>
+            <p x-show="error" style="color: var(--red); margin-top: 8px; font-size: 13px;" x-text="error"></p>
+        </div>
+
+        <!-- Output -->
+        <div class="card">
+            <h3>Generated Rule</h3>
+            <template x-if="!result">
+                <p style="color: var(--text-muted); padding: 20px 0;">Describe a threat and click Generate to create a detection rule.</p>
+            </template>
+            <template x-if="result">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span class="badge high" x-text="result.format.toUpperCase()"></span>
+                        <button class="btn" @click="copyRule()" style="font-size: 12px;">Copy</button>
+                    </div>
+                    <pre x-text="result.rule" style="white-space: pre-wrap;"></pre>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function generatePage() {
+    return {
+        description: '',
+        format: 'sigma',
+        severity: 'medium',
+        loading: false,
+        error: '',
+        result: null,
+
+        async generate() {
+            this.loading = true;
+            this.error = '';
+            this.result = null;
+            try {
+                const resp = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        description: this.description,
+                        format: this.format,
+                        severity: this.severity,
+                    }),
+                });
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    throw new Error(err.detail || 'Generation failed');
+                }
+                this.result = await resp.json();
+            } catch (e) {
+                this.error = e.message;
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        copyRule() {
+            if (this.result) {
+                navigator.clipboard.writeText(this.result.rule);
+            }
+        },
+    };
+}
+</script>
+{% endblock %}

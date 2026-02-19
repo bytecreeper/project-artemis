@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% set active = "events" %}
+{% block title %}Artemis — Events{% endblock %}
+
+{% block content %}
+<div x-data="eventsPage()" x-init="init()">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="color: var(--amber); font-family: var(--font-mono); font-size: 16px;">[=] EVENTS</h2>
+        <div style="display: flex; gap: 8px;">
+            <select class="btn" x-model="filter" @change="refresh()" style="background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border);">
+                <option value="">All Types</option>
+                <option value="edr.process.start">Process Start</option>
+                <option value="edr.process.stop">Process Stop</option>
+                <option value="edr.process.suspicious">Suspicious Process</option>
+                <option value="edr.file.created">File Created</option>
+                <option value="edr.file.modified">File Modified</option>
+                <option value="edr.sysmon.event">Sysmon Event</option>
+                <option value="net.host.discovered">Host Discovered</option>
+                <option value="correlation.chain">Chain Detected</option>
+            </select>
+            <button class="btn" @click="refresh()">Refresh</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Type</th>
+                    <th>Source</th>
+                    <th>Severity</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-if="events.length === 0">
+                    <tr><td colspan="5" style="color: var(--text-muted); text-align: center; padding: 20px;">No events recorded.</td></tr>
+                </template>
+                <template x-for="event in events" :key="event.id">
+                    <tr>
+                        <td class="mono" style="white-space: nowrap;" x-text="formatTime(event.timestamp)"></td>
+                        <td class="mono" style="font-size: 11px;" x-text="event.type"></td>
+                        <td x-text="event.source"></td>
+                        <td><span class="badge" :class="severityClass(event.severity)" x-text="severityLabel(event.severity)"></span></td>
+                        <td class="mono" style="max-width: 500px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="eventSummary(event)"></td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function eventsPage() {
+    return {
+        events: [],
+        filter: '',
+        async init() {
+            await this.refresh();
+            setInterval(() => this.refresh(), 5000);
+        },
+        async refresh() {
+            try {
+                let url = '/api/events?limit=100';
+                if (this.filter) url += '&event_type=' + encodeURIComponent(this.filter);
+                this.events = await fetch(url).then(r => r.json());
+            } catch (e) { console.error(e); }
+        },
+        formatTime(ts) {
+            if (!ts) return '-';
+            try { const d = new Date(ts); return d.toLocaleTimeString('en-US', { hour12: false }); }
+            catch { return ts; }
+        },
+        eventSummary(event) {
+            const d = event.data;
+            if (!d || typeof d !== 'object') return '';
+            if (d.name) return d.name + (d.cmdline ? ': ' + d.cmdline.substring(0, 80) : '');
+            if (d.pid) return 'PID ' + d.pid;
+            if (d.path) return d.path;
+            if (d.ip) return d.ip;
+            return JSON.stringify(d).substring(0, 100);
+        },
+        severityClass(s) { return ['low','low','medium','high','critical'][s] || 'low'; },
+        severityLabel(s) { return ['INFO','LOW','MED','HIGH','CRIT'][s] || 'INFO'; },
+    };
+}
+</script>
+{% endblock %}

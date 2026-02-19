@@ -1,0 +1,47 @@
+# Artemis v3 Configuration
+# Copy to config/local.toml and customize.
+
+[general]
+name = "artemis"
+log_level = "info"
+
+[ai]
+provider = "ollama"              # ollama | openai | anthropic | none
+model = "deepseek-r1:70b"
+base_url = "http://localhost:11434"
+timeout_seconds = 120
+# For cloud providers:
+# api_key = ""
+
+[web]
+host = "127.0.0.1"
+port = 8000
+auth_enabled = true
+# api_key will be auto-generated on first run if empty
+api_key = ""
+
+[edr]
+enabled = true
+plugins = ["sysmon", "process_monitor", "file_integrity"]
+sysmon_auto_install = false
+
+[edr.file_integrity]
+watch_paths = ["C:\\Users", "C:\\Windows\\System32"]
+poll_interval_seconds = 30
+
+[network]
+enabled = true
+scan_range = "192.168.4.0/22"
+scan_interval_seconds = 60
+
+[correlation]
+enabled = true
+window_seconds = 300            # correlate events within 5-min windows
+min_chain_score = 7.0           # minimum score to fire a correlated alert
+
+[database]
+path = "data/artemis.duckdb"
+
+[nats]
+enabled = false                 # set true for multi-process deployment
+url = "nats://localhost:4222"

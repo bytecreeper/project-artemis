@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% set active = "settings" %}
+{% block title %}Artemis — Settings{% endblock %}
+
+{% block content %}
+<div x-data="settingsPage()" x-init="init()">
+    <h2 style="color: var(--amber); font-family: var(--font-mono); font-size: 16px; margin-bottom: 20px;">[.] SETTINGS</h2>
+
+    <div class="grid-2">
+        <div class="card">
+            <h3>AI Provider</h3>
+            <div class="setting-row">
+                <span class="setting-label">Provider</span>
+                <span class="mono" x-text="config.ai?.provider || '-'"></span>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">Model</span>
+                <span class="mono" x-text="config.ai?.model || '-'"></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Network</h3>
+            <div class="setting-row">
+                <span class="setting-label">Scan Range</span>
+                <span class="mono" x-text="config.network?.scan_range || '-'"></span>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">Interval</span>
+                <span class="mono" x-text="(config.network?.interval || 0) + 's'"></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>EDR</h3>
+            <div class="setting-row">
+                <span class="setting-label">Status</span>
+                <span :style="config.edr?.enabled ? 'color: var(--green)' : 'color: var(--red)'" x-text="config.edr?.enabled ? 'Enabled' : 'Disabled'"></span>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">Plugins</span>
+                <span class="mono" x-text="(config.edr?.plugins || []).join(', ')"></span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Correlation</h3>
+            <div class="setting-row">
+                <span class="setting-label">Status</span>
+                <span :style="config.correlation?.enabled ? 'color: var(--green)' : 'color: var(--red)'" x-text="config.correlation?.enabled ? 'Enabled' : 'Disabled'"></span>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">Window</span>
+                <span class="mono" x-text="(config.correlation?.window_seconds || 0) + 's'"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+        <h3>System Health</h3>
+        <div class="setting-row">
+            <span class="setting-label">Uptime</span>
+            <span class="mono" x-text="formatUptime(health.uptime_seconds)"></span>
+        </div>
+        <div class="setting-row">
+            <span class="setting-label">Version</span>
+            <span class="mono" x-text="health.version || '-'"></span>
+        </div>
+    </div>
+
+    <p style="color: var(--text-muted); font-size: 12px; margin-top: 16px;">
+        Edit <code>config/local.toml</code> to change settings, then restart the server.
+    </p>
+</div>
+
+<style>
+.setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+}
+.setting-label {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function settingsPage() {
+    return {
+        config: {},
+        health: {},
+        async init() {
+            try {
+                [this.config, this.health] = await Promise.all([
+                    fetch('/api/config').then(r => r.json()),
+                    fetch('/api/health').then(r => r.json()),
+                ]);
+            } catch (e) { console.error(e); }
+        },
+        formatUptime(s) {
+            if (!s) return '-';
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            return h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+        },
+    };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Reports — Artemis{% endblock %}
+
+{% block content %}
+<div x-data="reportsApp()" style="padding: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <div>
+            <h2 style="font-family: var(--font-mono); color: var(--amber); font-size: 18px; margin: 0;">[R] SECURITY REPORTS</h2>
+            <p style="color: var(--text-muted); font-size: 13px; margin: 4px 0 0;">Generate professional security reports to share with your team or board.</p>
+        </div>
+    </div>
+
+    <!-- Generate Actions -->
+    <div style="display: flex; gap: 16px; margin-bottom: 32px; flex-wrap: wrap;">
+        <button @click="viewReport()" class="action-btn" :disabled="generating">
+            <span style="font-size: 18px; margin-right: 8px;">&#9654;</span>
+            <div>
+                <div style="font-weight: 700;">View Report</div>
+                <div style="font-size: 11px; color: var(--text-muted);">Open in new tab</div>
+            </div>
+        </button>
+        <button @click="saveReport()" class="action-btn" :disabled="generating">
+            <span style="font-size: 18px; margin-right: 8px;">&#9660;</span>
+            <div>
+                <div style="font-weight: 700;">Save to Disk</div>
+                <div style="font-size: 11px; color: var(--text-muted);">HTML file in /reports</div>
+            </div>
+        </button>
+    </div>
+
+    <!-- Status message -->
+    <div x-show="message" x-transition
+         style="padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; font-family: var(--font-mono);"
+         :style="messageType === 'success' ? 'background: rgba(0,255,65,0.1); border: 1px solid rgba(0,255,65,0.3); color: #00ff41;' : 'background: rgba(255,51,51,0.1); border: 1px solid rgba(255,51,51,0.3); color: #ff3333;'"
+         x-text="message">
+    </div>
+
+    <!-- What's in the report -->
+    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 24px;">
+        <h3 style="font-family: var(--font-mono); color: var(--amber); font-size: 14px; margin: 0 0 16px;">REPORT INCLUDES:</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+            <div class="report-feature">
+                <div style="color: var(--amber); font-weight: 700;">Security Score</div>
+                <div style="color: var(--text-muted); font-size: 12px;">Overall score with color-coded status</div>
+            </div>
+            <div class="report-feature">
+                <div style="color: var(--amber); font-weight: 700;">Executive Summary</div>
+                <div style="color: var(--text-muted); font-size: 12px;">AI-generated plain-language overview</div>
+            </div>
+            <div class="report-feature">
+                <div style="color: var(--amber); font-weight: 700;">Security Findings</div>
+                <div style="color: var(--text-muted); font-size: 12px;">MITRE ATT&CK mapped with evidence</div>
+            </div>
+            <div class="report-feature">
+                <div style="color: var(--amber); font-weight: 700;">Alert Summary</div>
+                <div style="color: var(--text-muted); font-size: 12px;">Open alerts with severity ratings</div>
+            </div>
+            <div class="report-feature">
+                <div style="color: var(--amber); font-weight: 700;">Event Timeline</div>
+                <div style="color: var(--text-muted); font-size: 12px;">24-hour activity visualization</div>
+            </div>
+            <div class="report-feature">
+                <div style="color: var(--amber); font-weight: 700;">Network Inventory</div>
+                <div style="color: var(--text-muted); font-size: 12px;">All discovered devices and hosts</div>
+            </div>
+            <div class="report-feature">
+                <div style="color: var(--amber); font-weight: 700;">Remediation Log</div>
+                <div style="color: var(--text-muted); font-size: 12px;">Actions taken with success/fail status</div>
+            </div>
+            <div class="report-feature">
+                <div style="color: var(--amber); font-weight: 700;">Print-Ready</div>
+                <div style="color: var(--text-muted); font-size: 12px;">Optimized for print and PDF export</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .action-btn {
+        display: flex;
+        align-items: center;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        color: var(--text-primary);
+        padding: 16px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-family: var(--font-mono);
+        transition: all 0.15s;
+    }
+    .action-btn:hover:not(:disabled) {
+        border-color: var(--amber);
+        background: rgba(255,191,0,0.05);
+    }
+    .action-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .report-feature {
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--bg-primary);
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function reportsApp() {
+    return {
+        generating: false,
+        message: '',
+        messageType: 'success',
+
+        viewReport() {
+            window.open('/api/report', '_blank');
+        },
+
+        async saveReport() {
+            this.generating = true;
+            this.message = '';
+            try {
+                const resp = await fetch('/api/report/save', { method: 'POST' });
+                const data = await resp.json();
+                this.message = `Report saved to ${data.path}`;
+                this.messageType = 'success';
+            } catch (e) {
+                this.message = 'Failed to save report: ' + e.message;
+                this.messageType = 'error';
+            }
+            this.generating = false;
+        }
+    };
+}
+</script>
+{% endblock %}
