@@ -564,7 +564,17 @@ Shield mode needs to speak entirely in human language, not security metrics.
 
 ## Contributing
 
-This project is in early development. If you are interested in contributing, testing, or providing feedback, open an issue or reach out. Detection rules, scanner plugins, and correlation rules are the easiest places to start.
+This project is in early development and actively looking for collaborators. The platform architecture, UI, and analysis layer are built. What needs the most work now is the security depth — detection engineering, low-level Windows visibility, and real-world threat coverage.
+
+Areas where contributions would have the most impact, in priority order:
+
+1. **Detection engineering** — YAML-based detection rules, Sigma rule integration, Sysmon event parsing, false positive tuning, and testing against real threats
+2. **Windows internals** — ETW integration, Windows service implementation, self-protection, memory inspection, AMSI integration (C/C++/Rust)
+3. **Correlation and analysis** — Session-based correlation, entity relationship graphs, time-proximity scoring, behavioral baselining
+4. **Frontend and accessibility** — Shield guided experience, screen reader support, mobile responsiveness, SSE reliability
+5. **Infrastructure** — Encrypted storage, log integrity, API hardening, installer packaging, detection rule update mechanism
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for the full breakdown of what is needed, project guidelines, and how to get started.
 
 ## License
 
